@@ -1,0 +1,1377 @@
+eweb1.0
+outdir=.
+outfiles=+eweb,eweb.erl,Makefile,+dviprint_double_sided
+copyright=Copyright (C) 1997-1999, Ericsson Telecom AB
+% Copyright (C) 1997-1999, Ericsson Telecom AB
+\documentstyle[]{report}
+\begin{document}
+
+\begin{center}
+
+\vspace{12.0cm}
+
+{\Large Literate Erlang 1.1}
+
+\vspace{1.5cm}
+
+Joe Armstrong\\
+Computer Science Laboratory\\
+Ericsson Telecom AB\\
+\verb+joe@cslab.ericsson.se+\\
+\bigskip
+Richard Carlsson\\
+Computing Science Department\\
+Uppsala University\\
+\verb+richardc@csd.uu.se+
+
+\vspace{1.5cm}
+%% Literate Erlang Report CS-JA-97-001\\
+Last Revised \today
+\vspace{2.5cm}
+
+{\bf Abstract}
+
+\end{center}
+
+  This report describes \verb+EWEB+: a system for literate programming
+in Erlang.
+
+  A literate Erlang program consists of explanatory text alternating
+with fragments of Erlang code. The fragments of code are written in an
+order which best aids understanding of the program and not in the order
+which they have to be presented to the Erlang compiler.
+
+  The program \verb+etangle+ takes the code fragments and rearranges
+them in a form which is acceptable to the Erlang compiler. \verb+eweave+
+takes the program and formats it as a \LaTeX{} file. Both programs are
+packaged together into \verb+EWEB+.
+
+  \verb+EWEB+ follows the philosophy of \verb+noweb+ which was developed
+by Norman Ramsey; \verb+noweb+ is a very much simplified version of
+Donald Knuth's \verb+WEB+ system.
+
+  This report contains the \verb+EWEB+ manual, instructions on how to
+build the system, and the source of the program \verb+eweb.erl+.
+
+\vspace{\fill}
+
+\pagebreak
+
+\section*{Introduction}
+
+  This	report	 is a literate Erlang  program.	   The	program can be
+compiled and  run,  like any other  program, or	 printed.  You are now
+reading the  printed version of	  the program.	When you program  with
+literate   Erlang you don't write    the program and the documentation
+separately, you do both at the same time.   This approach has a number
+of benefits.
+
+  A literate Erlang program consists  of explanatory text  alternating
+with fragments	of Erlang code.	 The  fragments of code are written in
+an order which best aids understanding	of the program	and not in the
+order which they have to be presented to the Erlang compiler.
+
+  The idea  of literate programming comes  from	 from Donald E.	 Knuth
+The current  implementation which is called \verb+eweb+	 is based on a
+on \verb+noweb+	 \cite{noweb}.	\verb+noweb+ was based	on \verb+cweb+
+\cite{knuth} which was based on \verb+WEB+.
+
+  To illustrate this we start  by describing the \verb+eweb+  program.
+This   makes use of   a number	 of small  utility  routines, such  as
+\verb+str2tex+ which is defined as follows:
+
+<<utilities>> :=
+str2tex([$_|T]) -> [$\\,$_|str2tex(T)];
+str2tex([H|T])	-> [H|str2tex(T)];
+str2tex([])	-> [].
+>>
+
+  The annotation {\sl $<<$utilities  1/9$>>$} means that this  is part
+one of six of a fragment called {\sl utilities\/} (the other fragments
+are numbered 2/6,  3/6 etc.). \verb+:=+ means that  this is the	 first
+block	in the fragment.  $\bigtriangledown$   \pageref{utilities_2_8}
+means that the next block is on page \pageref{utilities_2_8}.
+
+Block two of {\sl utilities\/} contains the routine \verb+file2strings+:
+
+<<utilities>> +=
+file2strings(File) ->
+    case file:read_file(File) of
+%#l1
+	{ok, Bin} ->
+	    binary2strings(Bin);
+	{error, What} ->
+%#l2
+	    exit({misc,file2strings,File})
+    end.
+>>
+
+  \verb|+=| means that	this   is  a continuation of   the  previously
+defined	     fragment.	 $\bigtriangleup$    \pageref{utilities_start}
+$\bigtriangledown$  \pageref{utilities_3_8} means   that the  previous
+part   of   the	  {\sl	    utilities\/}   fragment   was   on	  page
+\pageref{utilities_start},  and	 that  the next	 fragment    is	 on  page
+\pageref{utilities_3_8}.
+
+Note also that the all lines of code are {\sl numbered}. This
+is so that we can refer to lines of code within a given block of text.
+So, for example we can make witty comments like:
+
+\SL{l1} -- \SL{l2}: Test the return value of \verb+read_file+.
+
+Line number references are added to the file as follows:
+
+\begin{verbatim}
+  <<Fragment name>> :=
+  ...
+  %#Ref
+  ...
+  >>
+\end{verbatim}
+
+\verb+%#Ref+ is a symbolic reference to the {\sl next} line in the
+fragment. To refer to this line in the text use \verb+\L+\verb+N{Ref}+.
+To typeset the line number in {\sl italics\/} use
+\verb+\S+\verb+L{Ref}+.
+
+\section*{Format of a literate Erlang program}
+
+# Changed (R.C.): version 1.1 headers.
+Literate Erlang programs (as of version 1.1) must start:
+\begin{verbatim}
+# Changed (R.C.): initial comments allowed.
+ # Any number of initial comment lines
+ # (The `#' must be in the first column.)
+ eweb1.1
+ outdir=Dir
+ outfiles=File1,File2,...
+\end{verbatim}
+
+    Here   \verb+Dir+	is   directory where   all  output   will  go.
+\verb+File1, File2, ...+  is a comma separated	 list of output	 files
+which will be created by eweb. If any of the files names \verb+File1+,
+\verb+File2+   etc. begins  with  a plus   symbol (\verb|+|) then  the
+execute bit of the file will be set.
+
+# Added (R.C.):
+There may not be any empty lines in the header. Any number of comment
+lines (see below) may occur before the fields of the header, but not
+between them. The fields must be specified in the above order.
+
+# Added (R.C.):
+The \verb+eweb+ version number in the header may be less than 1.1
+(i.\,e., 1.0), in order to also be readable by older versions of this
+program.
+
+# Added (R.C.):
+After the mandatory lines above, the following optional line may follow,
+but can be left out, in which case an empty string is used for its
+value. If the line does not match the below, the header is assumed to
+end on the line before.
+# Optional fields are assumed to be given in the following order
+\begin{verbatim}
+ copyright=...
+\end{verbatim}
+
+# Added (R.C.):
+After the header follows arbitrary \LaTeX{} text, also containing code
+blocks and possibly more weave file comments.
+
+# Moved (R.C.): The comments section.
+# Added (R.C.): Clarification on comments.
+  Comments in a weave file (outside of code blocks) start with a
+``\verb+#+'' character in column 1, and continue up until the end of the
+line. Such lines are not included in the \LaTeX{} output.
+
+\begin{verbatim}
+# This comment will not be seen, but the one below will.
+ # This is a comment
+\end{verbatim}
+
+\subsection*{Code blocks}
+
+# Added (R.C.):
+At least each file name listed in \verb+outfiles+ must have a
+correspondingly named code fragment.
+
+The first block in a new fragment must be written:
+
+\begin{verbatim}
+ << Tag >> :=
+	... 
+	...
+ >>
+\end{verbatim}
+
+Continuation blocks are written:
+
+\begin{verbatim}
+ << Tag >> +=
+	...
+	...
+ >>
+\end{verbatim}
+
+  \verb+Tag+  is a an  arbitrary string which identifies the fragment.
+\verb+Tag+ is delimited by the \verb+<<+ and \verb+>>+ symbols and can
+contain any characters	(except	 \verb+>>+). Note  that	 the start tag
+\verb+<<...>>+	and end symbols \verb+>>+  must be written starting in
+column one of the program file.
+
+    The special keyword \verb+hide+ (written in brackets) means that the
+contents of the block should {\sl not\/} be written to the \LaTeX{}
+output stream. For example:
+
+\begin{verbatim}
+    <<(hide)Tag>> =
+	...
+	...
+    >>
+\end{verbatim}
+
+Means write the given text to \verb+File+ but {\bf not} to the generated
+\LaTeX{} file. Note there are no spaces between the "(hide)" annotation
+and the start of the tag.
+
+Fragments can include other fragments, thus if we write:
+
+\begin{verbatim}
+ <<abc>> :=
+	line 1
+	<<more stuff here ...>>
+	line2
+ >>
+
+ <<more stuff here ...>> :=
+	hello
+ >>
+\end{verbatim}
+
+Then \verb+etangle+ will expand the fragment \verb+abc+ into:
+
+\begin{verbatim}
+	line 1
+	hello
+	line 2
+\end{verbatim}
+
+
+\subsection*{Running the program}
+
+  To run the program we evaluate the command \verb+eweb+ in the crrent
+directory.
+
+\subsection*{Bootstrapping the program}
+
+    This  system is written  in itself {\sl  How did I	do that?} The
+distribution contains two files -- \verb+eweb.lit+ and \verb+eweb.erl+
+(which is generated from \verb+eweb.lit+).
+
+    To	bootstrap  the	system	compile	  the distributed version   of
+\verb+eweb.erl+ with your favorite  Erlang compiler. Then evaluate
+the expression:
+
+\begin{verbatim}
+	> eweb:file("eweb.lit").
+\end{verbatim}
+
+  If everything works (which it should) a new version of the file
+\verb+eweb.erl+ will have been created which is identical to the file in
+the distrbution, the file \verb+eweb.tex+ will also be created.
+\verb+eweb.tex+ can be run through \LaTeX{} (twice, to get the page
+numbers right) to get a pretty version of the documentation.
+
+    Note if you {\sl change\/} this program remember to keep a copy of
+the origonal which you can go back to if things go wrong!
+
+\section*{Etangle and Eweave}
+
+The overall structure of the program is as follows:
+
+<<eweb.erl>> :=
+-module(eweb).
+-export([file/1, dir/0]).
+
+%#ins1
+<<imports>>
+<<main>>
+<<parsing>>
+<<analysis>>
+<<etangle>>
+<<eweave>>
+<<error handling>>
+%#ins2
+<<utilities>>
+>>
+
+\SL{ins1} -- \SL{ins2}: Include a number of fragments which make up the
+program. The fragment {\sl imports}, for example, starts on pag
+\pageref{imports_start}.
+
+    We start with \verb+file/1+ which  is the main  entry point of the
+module.	 Most of file is enclosed in a big  \verb+catch begin ... end+
+construct:
+
+<<main>> :=
+file(File) ->
+    LitFile = File ++ ".lit",
+    io:fwrite("Processing:~p~n", [LitFile]),
+    case (catch begin
+	  clear_errors(),
+	  Strings = read_file(LitFile),
+	  throw_if_errors(),
+	  {OutDir, OutFiles, Copy, Blocks0} = 
+	      strings2blocks(Strings),
+	  throw_if_errors(),
+	  Blocks1 = number_blocks(Blocks0),
+	  throw_if_errors(),
+	  {Blocks, Dict} = number_lines(Blocks1),
+	  throw_if_errors(),
+	  eweave(OutDir, File, Blocks, Dict),
+%#et1
+	  etangle(File, OutDir, OutFiles, Copy, Blocks)
+	  end) of
+	{errors, E} ->
+	    report_errors(E),
+	    error;
+	{'EXIT', Why} ->
+	    io:fwrite("EXIT ~p~n", [Why]),
+	    error;
+	Other ->
+	    Other
+    end.
+>>
+
+\SL{et1}: Note the {\sl return\/} value of \verb+file+ is whatever
+\verb+etangle+ returns and this is a list of files which were created,
+this can be useful for combining \verb+eweb+ with other programs.
+
+Error handling in this program is slightly complicated since
+we want to collect {\sl all\/} the errors in a given pass
+and not just abort on the first error.
+The error handling routines use the global variable \verb+error$list+.
+which is used to stored a list of all errors which have occured.
+This is at the start of the program by calling:
+
+<<error handling>> :=
+clear_errors() -> put('error$list', []).
+>>
+
+If an error occurs {\sl within} a pass we call \verb+error(X)+ 
+which adds the error to the error list.
+
+<<error handling>> +=
+error(E) -> 
+    put('error$list', [E|get('error$list')]), error.
+>>
+
+  Between each pass  \verb+throw_if_errors+ is called.	This checks if
+any errors have been reported.	 If any errors	 have occured then  an
+exception is raised which will be caught in \verb+file/1+.
+
+<<error handling>> +=
+throw_if_errors() ->
+    case get('error$list') of
+	[] ->
+	    true;
+	Errors ->
+	    throw({errors, reverse(Errors)})
+    end.
+>>
+
+  Note	we call \verb+reverse(Errors)+	to reverse the order of errors
+in the error list.  This is because errors are reported by adding them
+to the head of the error list. When we report  errors we want to do so
+in the order in which they occured. Reporting errors is done with:
+
+<<error handling>> +=
+report_errors(Errors) ->
+    map(fun display_error/1, Errors).
+
+display_error(X) ->
+    io:fwrite("Error:~p~n", [X]).
+>>
+
+Finally, we may want to abort {\sl immediately} if a serious error occurs:
+
+<<error handling>> +=
+fatal(Error) ->
+    throw({errors, [Error]}).
+>>
+
+  \verb+read_file(File)+  reads a file	by calling \verb+file2strings+
+which returns a list   of the form  \verb+[{LineNo, String}]+.	 When
+processing text files we often need line numbers for reporting errors,
+it proves convenient to store the  lines number together with the data
+on the line in a single data structure for ease of future reference.
+
+<<parsing>> :=
+read_file(File) ->
+    case catch file2strings(File) of
+	{'EXIT', Why}->
+	    error({cannot_read,file,File,Why});
+	Strings ->
+	    Strings
+    end.
+>>
+
+  Having read the file, we parse it. \verb+strings2blocks+ checks that
+the file has a correct header. An incorrect header generates a fatal
+error.
+
+# Changed (R.C.): New parsing of header.
+<<parsing>> +=
+strings2blocks([{_, [$# | _]} | T]) ->
+    strings2blocks(T);
+strings2blocks([{L, [$e, $w, $e, $b | S]} | T]) ->
+    parse_header([{L, [$e, $w, $e, $b | S]} | T]);
+strings2blocks(_) ->
+    fatal({file,has,incorrect,header}).
+
+parse_header([{_,[$e,$w,$e,$b,$1,$.,$0|_]} | T]) ->
+    parse_header_1(T);
+parse_header([{_,[$e,$w,$e,$b,$1,$.,$1|_]} | T]) ->
+    parse_header_1(T);
+parse_header(_) ->
+    fatal({file,has,incorrect,header}).
+
+parse_header_1([{_,[$o,$u,$t,$d,$i,$r,$=|OutDir]},
+	        {_,[$o,$u,$t,$f,$i,$l,$e,$s,$=|OutFiles]}
+	        |T]) ->
+    {Copyright, Blocks} = parse_options(T),
+    {OutDir, OutFiles, Copyright, Blocks};
+parse_header_1(_) ->
+    fatal({file,has,incorrect,header}).
+>>
+
+# Added (R.C.):
+This handles the optional header fields (these are still required to be
+specified in order).
+
+# Added (R.C.):
+<<parsing>> +=
+parse_options([{_,[$c,$o,$p,$y,$r,$i,$g,$h,$t,$=|C]}
+	       | T]) ->
+	{C, parse1(T)};
+parse_options(T) ->
+	{"", parse1(T)}.
+>>
+
+    \verb+parse1+ collects together \LaTeX{} blocks and the blocks which
+belong to a fragment.
+
+<<parsing>> +=
+parse1(T) -> parse1(T, []).
+
+parse1([], Blocks) ->
+    reverse(Blocks);
+parse1(T, Blocks) ->
+    case get_block(T) of
+	none ->
+	    reverse(Blocks);
+	{B, T1} ->
+	    parse1(T1, [B|Blocks])
+    end.
+>>
+
+  \verb+get_block+ returns \verb+none+ if there are no more blocks, or
+\verb+{Block, Rest}+ where \verb+Block+	     is the next  block	   and
+\verb+Rest+ are the  remaining lines {\sl  after\/} the current block.
+\verb+get_block+   calls  either   \verb+get_tagged_block_body+	    or
+\verb+get_untagged+  block to do  the work of collecting the different
+block types.
+
+<<parsing>> +=
+get_block([]) ->
+    none;
+get_block([{Line,[$<,$<|T1]}|T2]) ->
+    Header = parse_block_header(Line, [$<,$<|T1]),
+    {Lines, T3} = get_tagged_block_body(T2, []),
+    {{block, Line, Header, Lines}, T3};
+get_block([H|T]) ->
+    {Lines, T1} = get_untagged_block(T, [H]),
+    {{tex, Lines}, T1}.
+>>
+
+  \verb+get_tagged_block_body+ collects	 lines until  a line  starting
+\verb+>>+ is encountered or until there are no more input lines.
+
+<<parsing>> +=
+get_tagged_block_body([], Lines) ->
+    {reverse(Lines), []};
+get_tagged_block_body([{_,[$>,$>|_]}|T], Lines) ->
+    {reverse(Lines), T};
+get_tagged_block_body([H|T], Lines) ->
+    get_tagged_block_body(T, [parse_data(H)|Lines]).
+>>
+
+\verb+get_untagged_block+ collects lines until a line starting
+\verb+<<+ is seen:
+ 
+<<parsing>> +=
+get_untagged_block([H|T], Lines) ->
+    case H of
+	{_Line,[$<,$<|_]} ->
+	    {reverse(Lines), [H|T]};
+	_ ->
+	    get_untagged_block(T, [H|Lines])
+    end;
+get_untagged_block([], Lines) ->
+    {reverse(Lines), []}.
+>>
+
+Event time a block starting \verb+<<+ is seen \verb+parse_block_header+ is
+called to parse the contents of the header:
+
+<<parsing>> +=
+parse_block_header(Line, Str) ->
+    case parse_tag(Str) of
+	{ok, Hide, Tag, Str1} ->
+	    case parse_after_tag(Str1) of
+		{ok, Type} ->
+		    {Hide, Tag, Type};
+		error ->
+		    error({badTagFollower,line,Line,
+			   must,be,'+=','or',':='})
+	    end;
+	error ->
+	    error({badTag,line,Line,is,Str})
+    end.
+>>
+
+Tags are assumed to look like \verb+<<(hide)Tag>>+
+
+    \verb+parse_tag(Str)+ is used for tag parsing.  It returns
+\verb+{ok,Hide,Tag,Rest}+ or \verb+error+.  \verb+Hide+ is \verb+hide+
+if the block should be hidden or \verb+show+ if the block should be
+shown.
+
+<<parsing>> +=
+parse_tag(Str1) ->
+    case skip_white_space(Str1) of
+	[$<,$<,$(,$h,$i,$d,$e,$)|Str2] ->
+		case collect_name(Str2) of
+		    {ok, Tag, Rest} ->
+			{ok, hide, Tag, Rest};
+		    error ->
+			error
+		end;
+	[$<,$<|Str2] ->
+	    case collect_name(Str2) of
+		{ok, Tag, Rest} ->
+		    {ok, show, Tag, Rest};
+		error ->
+		    error
+	    end;
+	_ ->
+	    error
+    end.
+>>
+
+Where:
+
+<<parsing>> +=
+collect_name(Str) -> collect_name(Str, []).
+
+collect_name([$>,$>|T], L) -> {ok, reverse(L), T};
+collect_name([H|T], L)	   -> collect_name(T, [H|L]);
+collect_name([], _)	   -> error.
+>>
+
+    After  the tag    we   expect to   find    one  of \verb+:=+    or
+\verb|+=|. This is recognised with:
+
+<<parsing>> +=
+parse_after_tag(Str) ->
+    case skip_white_space(Str) of
+	[$+,$=|_] -> {ok, continue};
+	[$:,$=|_] -> {ok, define};
+	_	  -> error
+    end.
+>>
+
+
+\verb+parse_data+ is called once for each line in the block.
+\verb+parse_data+ assumes that any line beginning \verb+<<+ 
+signals a fragment inclusion.
+
+<<parsing>> +=
+parse_data({Line, Str}) ->
+    case (Str1 = skip_white_space(Str)) of
+	[$<,$<|T] ->
+	    case parse_tag(Str1) of
+		{ok, show, Tag, _} ->
+		    {Line, {include,Tag,Str}};
+		_ ->
+		    error({badTagRef,line,Line,"=",Str})
+	    end;
+	_ ->
+	    {Line,Str}
+    end.
+>>
+
+Once the data has been parsed we number the blocks in the fragments.
+For example, if there were four blocks in a fragment we would number them
+1/4, 2/4, 3/4, and 4/4.	 This requires two passes:
+
+<<parsing>> +=
+number_blocks(Blocks) -> 
+    Dict0 = dict:new(),
+    {Blocks1,Dict} = n_pass1(Blocks, [], Dict0),
+    reverse(map(fun(X) -> n_pass2(X,Dict) end, Blocks1)).
+>>
+
+In pass one we use a dictionary to count how many times we have seen
+each block.
+
+%2345678901234567890123456789012345678901234567890123456789
+<<analysis>> :=
+n_pass1([{block,Line,{Hide,Tag,define},Data}|T],L,Dict) ->
+    case dict:find(Tag, Dict) of
+	error ->
+	    n_pass1(T,[{block2,Line,{Hide,Tag,1},Data}|L],
+			   dict:store(Tag,1,Dict));
+	{ok, _} ->
+	    error({multiple_def,line,Line,tag,Tag}),
+	    n_pass1(T, [error|L], Dict)
+    end;
+n_pass1([{block,Line,{Hide,Tag,continue},Data}|T],L,Dict) ->
+    case dict:find(Tag, Dict) of
+	{ok, N} ->
+	    n_pass1(T,
+		    [{block2,Line,{Hide,Tag,N+1},Data}|L],
+		    dict:store(Tag, N+1, Dict));
+	error ->
+	    error({continuation_but_no_start,
+		   line,Line,tag,Tag}),
+	    n_pass1(T, [error|L], Dict)
+    end;
+n_pass1([H|T], Blocks, Dict) ->
+    n_pass1(T, [H|Blocks], Dict);
+n_pass1([], Blocks, Dict) ->
+    {Blocks, Dict}.
+>>
+
+    After pass one we know the maximum number of blocks in each fragment.
+In the second pass we can add this information to the block headers.
+
+<<analysis>> +=
+n_pass2({block2, Line,{Hide,Tag,N}, Data}, Dict) ->
+	Max = dict:fetch(Tag, Dict),
+	{block3, Line,{Hide,Tag,{N,Max}},Data};
+n_pass2(X, _) ->
+    X.
+>>
+
+  Note how in each pass we changed the tags \verb+block1+ to
+\verb+block2+, then \verb+block3+ and finally \verb+block4+.  Use of
+distinct tags for different phases in the processing is good
+programming practise, it aids understanding of the program and in the
+event of an error makes debugging easier.
+
+    When we have numbered all the blocks we can go to the next phase
+of the program which numbers all the lines {\sl within\/} the code
+blocks.
+
+<<analysis>> +=
+number_lines(Blocks) ->
+    {Blocks1, {_Max, Dict}} = 
+	mapfoldl(fun number_lines/2, {1, []}, Blocks),
+    {Blocks1, Dict}.
+
+number_lines({block3, Line, {show,Tag,Indx}, Data}, A) ->
+    {Data1, A1} = mapfoldl(fun number_code/2, A, Data),
+    {{block4, Line, {show, Tag, Indx}, Data1}, A1};
+number_lines(Other, A) ->
+    {Other, A}.
+>>
+
+\verb+number_code+ numbers the individual lines of code and builds a
+dictionary of any line number references which are contained 
+{\sl within\/} the code blocks.
+
+<<analysis>> +=
+number_code({_Line, {include,Tag,Str}},{N,Dict}) ->
+    {{include1,N,Tag,Str},{N+1, Dict}};
+number_code({_Line, Str}, {N, Dict}) ->
+    case Str of
+%#label
+	[$%,$#|T] ->
+	    Label = extract_label(T),
+	    {label, {N, add_label(Label, N, Dict)}};
+	_ ->
+	    {{line,N,Str}, {N+1,Dict}}
+    end.
+>>
+
+{\sl \LN{label}} -- recognises a label.	 \verb+extract_label+ 
+finds the value of the label.
+
+<<analysis>> +=
+extract_label([$\n|_]) -> [];
+extract_label([$\t|_]) -> [];
+extract_label([$ |_])  -> [];
+extract_label([])      -> [];
+extract_label([H|T])   -> [H|extract_label(T)].
+>>
+
+\verb+add_label+ adds a new label and line number pair to the
+dictionary. It also checks for multiple lables and generates an error
+if an attempt is made to define a multiple label.
+
+<<analysis>> +=
+add_label(Label, N, Dict) ->
+    case lists:keysearch(Label, 1, Dict) of
+	{value, _} ->
+	    error({duplicate_label, Label}),
+	    Dict;
+	_ ->
+	    [{Label,N}|Dict]
+    end.
+>>
+
+\section*{Eweave}
+
+Eweave creates the \LaTeX{} file. \verb+OutDir+ is the directory were
+the output is to go. \verb+File+ is the name of the current file.
+\verb+L+ is the parsed file:
+
+<<eweave>> :=
+eweave(OutDir, File, L, Dict) ->
+    FullName = OutDir ++ "/" ++ File ++ ".tex", 
+    case file:open(FullName, write) of
+	{ok, S} ->
+	    foreach(fun(B) -> 
+			   weave_block(B, Dict, S) 
+		   end, L),
+	    file:close(S);
+	 {error, Why } ->
+	    exit({cannot,open, FullName})
+    end.
+>> 
+
+\verb+eweave+ calls \verb+weave_block+ for each block in the file:
+Note that hidden blocks are not output:
+
+<<eweave>> +=
+weave_block({tex, Lines}, Dict, S) ->
+    output_tex_block(S, Dict, Lines);
+weave_block({block4,Line,{show,Tag,{N,M}},Data},_,S) ->
+    output_code_block(S, Tag,{N,M}, Data);
+weave_block(_, _, _) -> 
+    true.
+>>
+
+  \verb+weave_block+ calls \verb+output_tex_block+ or
+\verb+output_code_block+ depending upon the block type.
+
+<<eweave>> +=
+output_tex_block(S, Dict, Lines) ->
+    foreach(fun({_,Str}) -> 
+		   put_tex_line(S, Dict, Str) 
+	    end, Lines).
+>>
+
+    \verb+put_text_line+ just outputs the line	if it is {\sl not\/} a
+comment.
+
+<<eweave>> +=
+put_tex_line(S, Dict, [$#|_]) -> true;
+put_tex_line(S, Dict, Str)    -> 
+    Str1 = expand_labels(Str, Dict),
+    io:fwrite(S, "~s~n", [detab(Str1)]).
+>>
+
+\verb+expand_labels+ has the jobs of expanding any lables in the
+line:
+
+# Changed (R.C.): Do not add space around the expansion.
+<<eweave>> +=
+%#LN
+expand_labels([$\\,$L,$N,${|T], Dict) ->
+    {Label, T1} = get_label(T, []),
+    Val = lookup(Label, Dict),
+    integer_to_list(Val) ++ expand_labels(T1, Dict);
+%#SL1
+expand_labels([$\\,$S,$L,${|T], Dict) ->
+    {Label, T1} = get_label(T, []),
+    Val = lookup(Label, Dict),
+    "{\\sl " ++ integer_to_list(Val) ++
+        [$} | expand_labels(T1, Dict)];
+expand_labels([H|T], Dict) ->
+    [H|expand_labels(T, Dict)];
+expand_labels([], Dict) ->
+    [].
+>>
+
+{\sl \LN{LN}} -- recognises a refernce to a label somewhere within a
+line of \LaTeX{} text. Label are written \verb+\L+\verb+N{XXX}+ and can
+be placed anywere in the text, but they cannot be split over a line
+break.
+
+\SL{SL1} -- recognises a reference to a slanted label
+written \verb+\S+\verb+L{XXX}+.
+
+\verb+get_label+ gets the label:
+
+<<eweave>> +=
+get_label([$}|T], L) -> {reverse(L), T};
+get_label([H|T],  L) -> get_label(T, [H|L]);
+get_label([], L)     -> {reverse(L), []}.
+>>
+
+and \verb+lookup+ finds the value of a label in the dictionary:
+
+<<eweave>> +=
+lookup(Label, [{Label,Val}|_]) -> Val;
+lookup(Label, [_|T]) -> lookup(Label, T);
+lookup(Label, [])    -> fatal({cannot,find,label,Label}).
+>>
+
+# Changed (R.C.): Can't use nonprintable as delimiter.
+\verb+output_code_block+ has to generate \LaTeX{} code, similar to the
+following:
+\begin{verbatim}
+#    \verbESC123: line 1 ESC\\
+#    \verbESC124: line 2 ... ESC\\
+    \verb+123:	  text of line 123 ...+\\
+    \verb+124:	  text of line 124 ...+\\
+    ...
+\end{verbatim}
+
+This is done as follows:
+
+# Changed (R.C.): Use `flushleft' environment and explicit `\\'.
+# Added (R.C.): `\\*' after block header.
+<<eweave>> +=
+output_code_block(S, Tag,{N,M}, Data) ->
+    Label = mk_label(Tag, N, M),
+    Refs  = mk_refs(Tag, N, M),
+    io:fwrite(S, "\\begin{flushleft}~n"
+		 "\\label{~s}~n", [Label]),
+%#here
+    io:fwrite(S, "\\noindent {\\small "
+		 "{\\sl $<<$~s (~w/~w)$>>$} ~s ~s}\\\\*~n"
+		 "\\tt~n",
+%#here1
+	      [str2tex(Tag),N,M,symbol(N,M),Refs]),
+    foreach(fun(X) -> put_code(S, X) end, Data),
+%#blank
+    io:fwrite(S, "\\end{flushleft}~n", []).
+>>
+
+# Added (R.C.): `\\*' after block header.
+\SL{here} -- \SL{here1} \verb+\obeylines+ is needed here to stop \TeX{}
+complaining about "Underfull boxes". \verb+\noindent+ is to stop the
+paragraph indentation which would otherwise occur here. \verb+\\*+
+prevents the header from being separated from the first line of code.
+
+{\sl \LN{blank}} -- adds a blank line after every block.
+
+\verb+put_code+ is called once for every line of code within a block.
+
+# Changed (R.C.): Cannot use ESC ("\e") as \verb-delimiter.
+# Changed (R.C.): Use field width for line number formatting.
+<<eweave>> +=
+put_code(S, {line,N,Str}) ->
+    Str1 = verb_prepare(Str),
+    io:fwrite(S, "~s\\verb&~s&\\\\~n",
+	      [make_linehdr(N), detab(Str1)]);
+put_code(S, {include1,N,Tag,Str}) ->
+    {Blanks, _} = isolate_blanks(detab(Str)),
+    DefRef = label(Tag,1,999999),
+    io:fwrite(S, "~s\\verb&~s&"
+		 "{\\sl $<<$~s \\pageref{~s} $>>$}\\\\~n",
+	      [make_linehdr(N), Blanks,
+	       detab(str2tex(Tag)), DefRef]);
+put_code(S, label) ->
+    void.
+
+make_linehdr(N) ->
+    io_lib:fwrite("\\noindent\\makebox[0pt][r]"
+		  "{\\makebox[4.5em][l]{~w:}}%~n", [N]).
+>>
+
+# Added (R.C.):
+The indentation of each fragment inclusion point is preserved, but any
+text following it on the same line is lost.
+
+# Added (R.C.):
+The problem with outputting lines of code verbatim is that of finding a
+proper delimiter. Using \verb+\begin{verbatim}+ \ldots{}
+\verb+\end{verbatim}+ would make it even more difficult to assure that
+the text ``\verb+\end{verbatim}+'' does not occur in the code (perhaps
+in a comment or a string), so to make it simple we use \verb+\verb+ on a
+line-by-line basis. We cannot guarantee that any fixed character does
+not occur in the code, so we are forced to scan each line that is to be
+output in order to avoid occurrences of the delimiter character. As
+delimiter in the output, we select the character ``\verb+&+''. (In
+particular, this is not popular for making ``bars'' like
+``\verb+%%%%%%%%+'' in comment text.) Occurrences of ``\verb+&+'' in a
+line are ``escaped'' by the \verb+verb_prepare+ function.
+
+# Added (R.C.):
+<<eweave>> +=
+verb_prepare([$& | Cs]) ->
+    [$&, $\\, $v, $e, $r, $b, $+, $&, $+,
+     $\\, $v, $e, $r, $b, $& | verb_prepare(Cs)];
+verb_prepare([C | Cs]) ->
+    [C | verb_prepare(Cs)];
+verb_prepare([]) ->
+    [].
+>>
+
+  \verb+mk_label+ and \verb+mk_refs+ create the labels and the forward
+and backward references which are used in the \LaTeX{} formatting of a
+fragment. Each block in a fragment contains a reference (written
+``$\bigtriangleup$ Page)'' to the previous block in the fragment and a
+reference (written ``$\bigtriangledown$ Page)'' to the next block in the
+current fragment. Note the special cases of the first block which has no
+predecessor and the last block which has no successor.
+
+Note also the double backslashes \verb+\\+ where a single backslash
+should occur in the \LaTeX{} text.
+
+# Changed (R.C.): Don't include a terminating newline.
+# Changed (R.C.): `mk_label' did not need to call `fwrite'.
+<<eweave>> +=
+mk_label(Tag, N, M) ->
+    label(Tag,N,M).
+
+mk_refs(Tag, 1, 1) -> "";
+mk_refs(Tag, 1, N) when N > 1 ->
+    io_lib:fwrite("$\\bigtriangledown$ \\pageref{~s}", 
+		  [label(Tag,2,N)]);
+mk_refs(Tag, N, N) ->
+    io_lib:fwrite("$\\bigtriangleup$ \\pageref{~s}", 
+		  [label(Tag,N-1,N)]);
+mk_refs(Tag, N, M) when N < M ->
+    io_lib:fwrite("$\\bigtriangleup$ \\pageref{~s} \\ "
+		  "$\\bigtriangledown$ \\pageref{~s}", 
+		  [label(Tag,N-1,M),label(Tag,N+1,M)]);
+mk_refs(_, _, _) ->
+    "".
+
+label(Tag,1,_) -> Tag ++ "_start";
+label(Tag,N,M) -> io_lib:fwrite("~s_~w_~w", [Tag,N,M]).
+>>
+
+  Perhaps we should say something about the handling of inclusions:
+these are contained in the middle of code blocks. We want to type set
+the include references in italics, and correctly indent it, keeping the
+indentation that was used in the source file.
+
+  The term \verb+{include,Tag,Str}+ is the parsed form of the original
+source code line; \verb+Str+ is the original line. We split off the
+blanks at the start of this line and typeset the blanks as verbatim.
+After this we type set the tag name in italics. This will ensure that
+the inclusion directive is correctly indented.
+
+<<eweave>> +=
+isolate_blanks(L) -> splitwith(fun(X) -> X == 32 end, L).
+>>
+
+And we need to format the "type" of the block in the fragment:
+
+<<eweave>> +=
+symbol(1,N) -> ":=";
+symbol(N,M) -> "+=".
+>>
+
+\section*{Etangle}
+
+Etangle untangles the input 
+file and creates files from all files mentioned in the
+\verb+outfiles+ declaration, it {\sl returns\/} a list of all files
+that it created.
+
+<<etangle>> :=
+etangle(Src, OutDir, OutFiles, Copy, L) ->
+    io:fwrite("Calling tangle~n", []),
+    Files =  string:tokens(OutFiles, ","),
+    AllBlocks = [{H,D} || {block4, _, H, D} <- L],
+    UsedBlocks = 
+	case Files of
+	    [] ->
+		io:fwrite("** Nothing to tangle~n", []),
+		[];
+	    _ ->
+		foldl(fun(File, Used) ->
+			  tangle_file(Src,OutDir,File,Copy, 
+				      AllBlocks, Used)
+		      end, [], Files)
+    end,
+    warn_unused(AllBlocks, UsedBlocks),
+    Files.
+>>
+
+\verb+warn_unused+ prints a warning if any blocks are not used.
+
+<<etangle>> +=
+warn_unused(All, Used) ->
+    Defined = [{Tag,N,M} || {{_,Tag,{N,M}},_} <- All],
+    NotUsed = filter(fun(X) -> 
+			    not member(X, Used) 
+		     end, Defined),
+    case NotUsed of
+	[] ->
+	    true;
+	_ ->
+	    io:fwrite("*** warning some blocks unused..~n"
+		      "~p~n", [NotUsed])
+    end.
+>>
+    \verb+tangle_file+ is   called   for each file  mentioned	in the
+\verb+outfiles+ declaration. The variable  \verb+Used+ is used to
+note all fragments which have been included from the original source file.
+    
+If the file name starts with a \verb|+| character the file
+mode is set to executable.
+
+# Changed (R.C.): Call `os:cmd' instead of `unix:cmd'.
+<<etangle>> +=
+tangle_file(Src, OutDir, File, Copy, Blocks, Used) ->
+    BaseName = case File of 
+		   [$+|T] -> T;
+		   T	  -> T
+	       end,
+    FullName = OutDir ++ "/" ++ BaseName,
+    io:fwrite("Creating ~s~n", [FullName]),
+    {ok, S} = file:open(FullName, write),
+    case lists:suffix(".erl", File) of
+	true ->
+	    Warn = "%% This file was created from ~s~n"
+		   "%% please do not edit ~n"
+		   "%% ~s~n",
+	    io:fwrite(S, Warn, [Src,Copy]);
+	false ->
+	    true
+    end,
+    Used1 = include_file(S, {start, BaseName}, 
+			 Blocks, [], Used),
+    file:close(S),
+    case File of
+	[$+|_] ->
+	    os:cmd("chmod u+x " ++ BaseName);
+	_ ->
+	    true
+    end,
+    Used1.
+>>
+
+    Most  of	the   work  is	  done	  in  \verb+include_file+  and
+\verb+untangle+. The  only point to  note  is the  use of the variable
+\verb+Path+.  Path is a list  of all references	 from  the top of  the
+inclusion  tree to the current node  in the tree.  We keep a record of
+how  we have got  to   the current node	  in  order to	avoid  circular
+inclusions. A circular	inclusion  (i.e. one of	 the form  A includes B
+includes C ... includes A) would put the system into an infinite loop.
+
+  A  fatal  error is  generated	  if we attempt	  to  make a  circular
+inclusion.  We also keep track (in  the variable \verb+Used+) of which
+blocks in  the fragment have been included.    This infomation will be
+used later so that we can we  can issue a  diagnostic if any fragments
+were missed.
+
+<<etangle>> +=
+include_file(S, Tag, Blocks, Path, Used) ->
+    {Tag1, Data}  = find_block(Tag, Blocks),
+    case member(Tag1, Path) of
+	true ->
+	    fatal({recursive_tangle, Tag, Path});
+	false ->
+	    untangle(S, Data, Tag1, Blocks,
+		     [Tag1|Path], [Tag1|Used])
+    end.
+
+untangle(S,[{line,_,Str}|T], Tag,Blocks,Path,Used) ->
+    io:fwrite(S, "~s~n", [Str]),
+    untangle(S, T, Tag, Blocks, Path, Used);
+untangle(S,[{include1,_,NextTag,_}|T],
+	 Tag,Blocks,Path,Used) ->
+    Used1 = include_file(S, {start, NextTag},
+			 Blocks,Path,Used),
+    untangle(S, T, Tag, Blocks, Path, Used1);
+untangle(S, [label|T], Tag,Blocks,Path,Used) ->
+    untangle(S, T, Tag, Blocks, Path, Used);
+untangle(S, [], {Tag, Max, Max}, Blocks, Path, Used) ->
+    Used;
+untangle(S, [], {Tag, N, Max},
+	 Blocks, Path, Used) ->
+    include_file(S, {Tag,N+1,Max}, Blocks, Path, Used).
+>>
+
+\verb+find_block+ finds a given block in a fragment:
+
+<<eweave>> +=
+find_block({start, Tag}, Blocks) ->
+    find_block(Tag, 1, Blocks);
+find_block({Tag,I,N}, Blocks) ->
+    find_block(Tag, I, Blocks).
+
+find_block(Tag, I, [{{_Hide,Tag,{I,N}},Data}|_]) ->
+    {{Tag, I, N}, Data};
+find_block(Tag, I, [H|Blocks]) ->
+    find_block(Tag, I, Blocks);
+find_block(Tag, I, []) ->
+    fatal({cannot_find_block, I, Tag}).
+>>
+
+\verb+file2strings+, which we mentioned earlier, is implemented using\\
+\verb+binary2strings+ (this method is, incidentally, some three times
+faster than a previous version which I had written using
+\verb+file:read+ and \verb+io:get_line+).
+
+<<utilities>> +=
+binary2strings(Bin) when binary(Bin) ->
+    binary2strings(binary_to_list(Bin), 1, [], []).
+
+binary2strings([H|T], N, C, L) ->
+    case H of
+	$\n -> 
+	    binary2strings(T,N+1,[],[{N,reverse(C)}|L]);
+	_ -> 
+	    binary2strings(T,N,[H|C],L)
+    end;
+binary2strings([], N, [], L) ->
+    reverse(L);
+binary2strings([], N, C, L) ->
+    reverse([{N,reverse(C)}|L]).
+>>
+
+  We also need an import declarations and a  few small test and
+utility routines.
+
+## alphabetic order here 
+
+<<imports>> := 
+-import(lists, [dropwhile/2, filter/2, foldl/3, foreach/2, 
+		map/2, mapfoldl/3, member/2, reverse/1, 
+		splitwith/2, sublist/3, suffix/2]).
+>>
+
+<<utilities>> +=
+skip_white_space(Str) ->
+    dropwhile(fun($ )  -> true;
+		 ($\n) -> true;
+		 ($\t) -> true;
+		 (_)   -> false 
+	      end, Str).
+		  
+detab(L) -> detab(L, 1, []).
+
+detab([$\t|T], N, L) when N rem 8 == 0 -> 
+    detab(T, N+1, [$ |L]);
+detab([$\t|T], N, L) -> 
+    detab([$\t|T], N+1, [$ |L]);
+detab([H|T], N, L) ->
+    detab(T, N+1, [H|L]);
+detab([], _, L) ->
+    reverse(L).
+
+>>
+
+And a shell script to launch everything: 
+
+<<eweb>> :=
+erl -noshell -pa "/home/joe/erl/eweb" \
+    -s eweb dir -s erlang halt
+>>
+
+\noindent (Edit the resulting file to point to where you store your
+compiled version of the \verb+eweb.erl+ file.)
+
+The shell script calls \verb+eweb:dir+ which processes all out of date
+files:
+
+<<utilities>>+=
+dir() -> 
+    foreach(fun file/1, 
+	    find_out_of_date(".", ".lit", ".tex")).
+>>
+
+    \verb+find_out_of_date(".", ".lit", ".tex")+ finds all \verb+.tex+
+files that are out of date with respect to the \verb+.lit+ files in the
+current directory:
+
+<<utilities>> +=
+find_out_of_date(Dir, In, Out) ->
+    case file:list_dir(Dir) of
+	{ok, Files0} ->
+	    Files1 = filter(fun(F) -> 
+				   suffix(In, F) 
+			    end, Files0),
+	    Files2 = map(fun(F) -> 
+			   sublist(F,1,
+				   length(F) - length(In)) 
+			 end, Files1),
+	    filter(fun(F) ->
+			  update(F, In, Out) 
+		   end, Files2);
+	_ ->
+	    []
+    end.
+>>
+
+This calls \verb+update(File, In, Out)+ which 
+returns \verb+true+ if \verb|File ++ In| 
+was modified after \verb|File ++ Out|.
+
+<<utilities>> +=
+update(File, In, Out) ->
+    InFile  = File ++ In,
+    OutFile = File ++ Out,
+    case is_file(OutFile) of
+	true ->
+	    case writeable(OutFile) of
+		true ->
+		    outofdate(InFile, OutFile);
+		false ->
+		    %% can't write so we can't update
+		    false
+	    end;
+	false ->
+	    %% doesn't exist
+	    true
+    end.
+>>
+
+  And finally, there are number of  small utilities which interface us
+to the file system:
+
+<<utilities>> +=
+is_file(File) ->
+    case file:file_info(File) of
+	{ok, _} ->
+	    true;
+	_ ->
+	    false
+    end.
+
+writeable(F) ->
+    case file:file_info(F) of
+	{ok, {_,_,read_write,_,_,_,_}} -> true;
+	{ok, {_,_,write	    ,_,_,_,_}} -> true;
+	_ -> false
+    end.
+
+outofdate(In, Out) ->
+    case {last_modified(In), last_modified(Out)} of
+	{T1, T2} when T1 > T2 ->
+	    true;
+	_ ->
+	    false
+    end.
+
+last_modified(F) ->
+    case file:file_info(F) of
+	{ok, {_, _, _, _, Time, _, _}} ->
+	    Time;
+	_ ->
+	    exit({last_modified, F})
+    end.
+>>
+
+That's it!
+
+\section*{Utilities}
+
+Here are a few useful utilites
+
+<<Makefile>> :=
+# Unix-Makefile for `eweb.lit'
+#
+# Note that `eweb.beam' must already exist for the `eweb'
+# shell script to be able to execute EWEB in Erlang
+# (assuming we run under BEAM).
+#
+# Be sure to have a backup of the latest stable `eweb.erl'
+# (or `eweb.beam') file before running `make'!
+# If the backup of `eweb.erl' is named `eweb.erl.stable',
+# then just do `make restore' to get a working `eweb.beam'.
+#
+# The version of LaTeX used for typesetting `eweb.tex'
+# should preferably be 2.09, rather than LaTeX 2e; the
+# old version is generally named `latex209' if it has
+# been kept on your local system.
+
+#LATEX=latex209
+LATEX=latex
+
+STABLE=eweb.erl.stable
+MACHINE=beam
+
+
+all:	eweb.$(MACHINE) doc
+
+doc:	eweb.dvi
+
+ps:	eweb.ps
+
+restore:	clean
+	cp -pf $(STABLE) eweb.erl
+	erl -compile eweb
+	touch -r $(STABLE) eweb.$(MACHINE)
+
+eweb.$(MACHINE):	eweb.erl
+	erl -compile eweb
+
+eweb.erl eweb.tex:	eweb.lit
+	sh ./eweb
+
+eweb.dvi:	eweb.tex
+	$(LATEX) eweb.tex
+	$(LATEX) eweb.tex
+
+eweb.ps:	eweb.dvi
+	dvips eweb.dvi -o
+
+clean:
+	-rm eweb.tex eweb.log eweb.aux eweb.erl
+
+realclean:	clean
+	-rm eweb.dvi
+>>
+
+The following script prints a dvi file on \verb+lwd+ (our double-sided
+laser printer):
+
+<<dviprint_double_sided>> :=
+#! /bin/sh
+dvips -o tmp123.ps $1
+lpr -P lwd tmp123.ps
+rm tmp123.ps
+>>
+
+\section*{Not done}
+
+Line numbers from the original should be included in the generated
+files. This is however not trivial since it can only be done between
+function declarations, by adding \verb+-file(...)+ annotations to the
+Erlang code, so the compiler gets the line numbers correct.
+
+An emacs-mode should be written for editing Literate Erlang programs. As
+a fix, the leading comment lines of EWEB~1.1 files allow you to begin a
+file with something like:
+\begin{verbatim}
+ #    -*-latex-*-
+ eweb1.1
+ ...
+\end{verbatim}
+which would make Emacs go into \LaTeX{} mode.
+
+Setting the ``executable'' flag on files should be done in an
+OS-independent way, not by Unix \verb+chmod+.
+
+\begin{thebibliography}{99}
+
+    \bibitem{knuth}  Donald  E. Knuth and Silvio   Levy. {\sl The CWEB
+system of Structured Documentation}. {\bf publisher??}
+
+    \bibitem{noweb} Norman  Ramsey.  {\sl Literate-Programming	 Tools
+Need  Not Be   Complex}.  Research   report  CS-TR-351-91.   Princeton
+University, 1992.
+
+\end{thebibliography}
+
+\end{document}

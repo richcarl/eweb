@@ -1,0 +1,4 @@
+#! /bin/sh
+dvips -o tmp123.ps $1
+lpr -P lwd tmp123.ps
+rm tmp123.ps

@@ -1,0 +1,104 @@
+eweb1.0
+outdir=.
+outfiles=test1.out,test1.out1
+copyright=Copyright (C) 1997, Ericsson Telecom AB
+
+\documentstyle[]{article}
+\begin{document}
+
+\section{Section 1}
+
+    Paragraph one sic laudum domun  graso bolo par  dento de onum zipo
+\verb+silo+ de huilo plesciso ren dem pbsalo  \LaTeX blado. Sic laudum
+domun graso bolo par dento de onum ziposic laudum domun graso bolo par
+dento de onum {\sl  zipo sic laudum domun  graso bolo\/} par dento. De
+onum zipo  sic  laudum domun  graso  bolo par dento   de onum zipo sic
+laudum domun graso bolo par dento de onum zipo
+
+\begin{verbatim}
+A vertim block
+in LaTeX
+\end{verbatim}
+
+## Some comments in normal text
+## will be omitted
+
+    Paragraph two sic  laudum domun graso bolo  par dento de onum zipo
+\verb+bodo domun+ de huilo  plesciso ren dem  pbsalo blado. Sic laudum
+domun graso bolo par.
+
+    Paragraph two sic  laudum domun graso bolo  par dento de onum zipo
+\verb+bodo domun+ de huilo  plesciso ren dem  pbsalo blado. Sic laudum
+domun graso bolo par.
+
+<<test1.out>> :=
+	<<one>>
+	<<two>>
+	<<three>>
+>>
+
+Bla domo de sicko rasto collus om da plato dombo!
+
+<<test1.out>> += 
+	<<dado dum>>
+>>
+
+Nada de dolum bogo.
+
+<<three>> :=
+	three (1)
+>>
+
+\section{Da Sezctionaie duo}
+
+De bodo da de bodo do.
+
+<<two>> :=
+	two (1)
+>>
+
+De blido \verb+debug+ we ploobaah dag am de drglish amon pongo zabog.
+
+<<three>> +=
+	three (2)
+>>
+
+Blado dah
+
+<<two>> +=
+	two (2) with a tab
+        two (3) with blanks
+>>
+
+Ado blago de mondo zabag
+
+<<one>> :=
+	one (1).
+>>
+
+Blado blado boodo boz {\bf with normal tabbing}.
+
+<<dado dum>> :=
+foo() ->
+    a,
+    case f(i) of
+	a ->
+	    b,
+	    case b() of
+		g ->
+		    d
+	    end;
+	b ->
+	    c
+    end.
+>>
+
+Da da doo!
+
+<<test1.out1>> :=
+	test1.out1
+>>
+
+\end{document}
+
+

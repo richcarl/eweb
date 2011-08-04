@@ -1,0 +1,2 @@
+erl -noshell -pa "/home/joe/erl/eweb" \
+    -s eweb dir -s erlang halt

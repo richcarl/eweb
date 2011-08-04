@@ -1,0 +1,67 @@
+<body bgcolor="white">
+<title>Literate Erlang</title>
+<h1>Literate Erlang</h1>
+
+Literate   Erlang  is    a system    for    writing
+<i>literate</i> Erlang programs. In a literate Erlang program the code
+is  presented in an  order which best  aids understanding the program
+and not in  the order which  the code has  to  be presented to  the
+Erlang compiler.<p>
+
+<b>eweb</b> is a program which expands a literate Erlang
+program. Literate Erlang programs are stored  in files with a <b>.lit</b>
+extension. 
+
+<h1>Installing Literate Erlang</h1>
+<hr>
+<table border=0 cellpadding=0>
+
+<td valign=top><b>Installing</b></td>
+<td>&nbsp</td>
+<td valign=top> 
+Create a directory where you will store the
+<b>eweb</b> program. Fetch the files <b>eweb.erl</b>
+and
+<b>eweb.lit</b> and store them in this directory.
+<p>Compile <b>eweb.erl</b> with your favorite Erlang.
+<p>evaluate the expression <b>eweb:file("eweb").</b>
+<p>Evaluating this expression will cause a number of files to be
+created <b>eweb.tex</b>, <b>Makefile</b>, <b>eweb</b> etc.
+
+<p>Give the command <b>Make doc</b> to make the documentation.
+This will create the file <b>eweb.dvi</b>.
+
+<p><b>Note:</b> for this to work you must have installed LaTeX
+on your machine. It is assumed that you have already done this :-)
+<p><b>
+</td>
+</tr>
+
+<td valign=top><b>Running</b></td>   
+<td>&nbsp</td> 
+
+    <td valign=top>If you look in the installation directory you will
+find  a script  called <b>eweb</b>. Edit  the path  in  this script to
+point to the installation directory and put this  file somewhere in you
+path.
+
+    <p> The command <b>eweb</b> scans the  current directory and looks
+for any  <b>.lit</b>  files which have  a later  date  stamp  that the
+corresponding <b>.tex</b> files. It then runs <b>eweb:file</b> on any
+such files.
+<p>
+</td>
+</tr>
+
+</tr>
+
+<td valign=top><b>Make clean</b></td>   
+<td>&nbsp</td> 
+
+<td valign=top><b>Make clean</b> can be run to remove any
+unwanted files which were created by running </b>eweb</b>
+<p>
+</td>
+</tr>
+
+</table>

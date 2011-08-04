@@ -1,0 +1,2104 @@
+% Copyright (C) 1997-1999, Ericsson Telecom AB
+\documentstyle[]{report}
+\begin{document}
+
+\begin{center}
+
+\vspace{12.0cm}
+
+{\Large Literate Erlang 1.1}
+
+\vspace{1.5cm}
+
+Joe Armstrong\\
+Computer Science Laboratory\\
+Ericsson Telecom AB\\
+\verb+joe@cslab.ericsson.se+\\
+\bigskip
+Richard Carlsson\\
+Computing Science Department\\
+Uppsala University\\
+\verb+richardc@csd.uu.se+
+
+\vspace{1.5cm}
+%% Literate Erlang Report CS-JA-97-001\\
+Last Revised \today
+\vspace{2.5cm}
+
+{\bf Abstract}
+
+\end{center}
+
+  This report describes \verb+EWEB+: a system for literate programming
+in Erlang.
+
+  A literate Erlang program consists of explanatory text alternating
+with fragments of Erlang code. The fragments of code are written in an
+order which best aids understanding of the program and not in the order
+which they have to be presented to the Erlang compiler.
+
+  The program \verb+etangle+ takes the code fragments and rearranges
+them in a form which is acceptable to the Erlang compiler. \verb+eweave+
+takes the program and formats it as a \LaTeX{} file. Both programs are
+packaged together into \verb+EWEB+.
+
+  \verb+EWEB+ follows the philosophy of \verb+noweb+ which was developed
+by Norman Ramsey; \verb+noweb+ is a very much simplified version of
+Donald Knuth's \verb+WEB+ system.
+
+  This report contains the \verb+EWEB+ manual, instructions on how to
+build the system, and the source of the program \verb+eweb.erl+.
+
+\vspace{\fill}
+
+\pagebreak
+
+\section*{Introduction}
+
+  This  report   is a literate Erlang  program.    The  program can be
+compiled and  run,  like any other  program, or  printed.  You are now
+reading the  printed version of   the program.  When you program  with
+literate   Erlang you don't write    the program and the documentation
+separately, you do both at the same time.   This approach has a number
+of benefits.
+
+  A literate Erlang program consists  of explanatory text  alternating
+with fragments  of Erlang code.  The  fragments of code are written in
+an order which best aids understanding  of the program  and not in the
+order which they have to be presented to the Erlang compiler.
+
+  The idea  of literate programming comes  from  from Donald E.  Knuth
+The current  implementation which is called \verb+eweb+  is based on a
+on \verb+noweb+  \cite{noweb}.  \verb+noweb+ was based  on \verb+cweb+
+\cite{knuth} which was based on \verb+WEB+.
+
+  To illustrate this we start  by describing the \verb+eweb+  program.
+This   makes use of   a number   of small  utility  routines, such  as
+\verb+str2tex+ which is defined as follows:
+
+\begin{flushleft}
+\label{utilities_start}
+\noindent {\small {\sl $<<$utilities (1/8)$>>$} := $\bigtriangledown$ \pageref{utilities_2_8}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{1:}}%
+\verb&str2tex([$_|T]) -> [$\\,$_|str2tex(T)];&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{2:}}%
+\verb&str2tex([H|T])  -> [H|str2tex(T)];&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{3:}}%
+\verb&str2tex([])     -> [].&\\
+\end{flushleft}
+
+  The annotation {\sl $<<$utilities  1/9$>>$} means that this  is part
+one of six of a fragment called {\sl utilities\/} (the other fragments
+are numbered 2/6,  3/6 etc.). \verb+:=+ means that  this is the  first
+block   in the fragment.  $\bigtriangledown$   \pageref{utilities_2_8}
+means that the next block is on page \pageref{utilities_2_8}.
+
+Block two of {\sl utilities\/} contains the routine \verb+file2strings+:
+
+\begin{flushleft}
+\label{utilities_2_8}
+\noindent {\small {\sl $<<$utilities (2/8)$>>$} += $\bigtriangleup$ \pageref{utilities_start} \ $\bigtriangledown$ \pageref{utilities_3_8}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{4:}}%
+\verb&file2strings(File) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{5:}}%
+\verb&    case file:read_file(File) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{6:}}%
+\verb&        {ok, Bin} ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{7:}}%
+\verb&            binary2strings(Bin);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{8:}}%
+\verb&        {error, What} ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{9:}}%
+\verb&            exit({misc,file2strings,File})&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{10:}}%
+\verb&    end.&\\
+\end{flushleft}
+
+  \verb|+=| means that  this   is  a continuation of   the  previously
+defined      fragment.   $\bigtriangleup$    \pageref{utilities_start}
+$\bigtriangledown$  \pageref{utilities_3_8} means   that the  previous
+part   of   the   {\sl      utilities\/}   fragment   was   on    page
+\pageref{utilities_start},  and  that  the next  fragment    is  on  page
+\pageref{utilities_3_8}.
+
+Note also that the all lines of code are {\sl numbered}. This
+is so that we can refer to lines of code within a given block of text.
+So, for example we can make witty comments like:
+
+{\sl 6} -- {\sl 9}: Test the return value of \verb+read_file+.
+
+Line number references are added to the file as follows:
+
+\begin{verbatim}
+  <<Fragment name>> :=
+  ...
+  %#Ref
+  ...
+  >>
+\end{verbatim}
+
+\verb+%#Ref+ is a symbolic reference to the {\sl next} line in the
+fragment. To refer to this line in the text use \verb+\L+\verb+N{Ref}+.
+To typeset the line number in {\sl italics\/} use
+\verb+\S+\verb+L{Ref}+.
+
+\section*{Format of a literate Erlang program}
+
+Literate Erlang programs (as of version 1.1) must start:
+\begin{verbatim}
+ # Any number of initial comment lines
+ # (The `#' must be in the first column.)
+ eweb1.1
+ outdir=Dir
+ outfiles=File1,File2,...
+\end{verbatim}
+
+    Here   \verb+Dir+   is   directory where   all  output   will  go.
+\verb+File1, File2, ...+  is a comma separated   list of output  files
+which will be created by eweb. If any of the files names \verb+File1+,
+\verb+File2+   etc. begins  with  a plus   symbol (\verb|+|) then  the
+execute bit of the file will be set.
+
+There may not be any empty lines in the header. Any number of comment
+lines (see below) may occur before the fields of the header, but not
+between them. The fields must be specified in the above order.
+
+The \verb+eweb+ version number in the header may be less than 1.1
+(i.\,e., 1.0), in order to also be readable by older versions of this
+program.
+
+After the mandatory lines above, the following optional line may follow,
+but can be left out, in which case an empty string is used for its
+value. If the line does not match the below, the header is assumed to
+end on the line before.
+\begin{verbatim}
+ copyright=...
+\end{verbatim}
+
+After the header follows arbitrary \LaTeX{} text, also containing code
+blocks and possibly more weave file comments.
+
+  Comments in a weave file (outside of code blocks) start with a
+``\verb+#+'' character in column 1, and continue up until the end of the
+line. Such lines are not included in the \LaTeX{} output.
+
+\begin{verbatim}
+ # This is a comment
+\end{verbatim}
+
+\subsection*{Code blocks}
+
+At least each file name listed in \verb+outfiles+ must have a
+correspondingly named code fragment.
+
+The first block in a new fragment must be written:
+
+\begin{verbatim}
+ << Tag >> :=
+        ... 
+        ...
+ >>
+\end{verbatim}
+
+Continuation blocks are written:
+
+\begin{verbatim}
+ << Tag >> +=
+        ...
+        ...
+ >>
+\end{verbatim}
+
+  \verb+Tag+  is a an  arbitrary string which identifies the fragment.
+\verb+Tag+ is delimited by the \verb+<<+ and \verb+>>+ symbols and can
+contain any characters  (except  \verb+>>+). Note  that  the start tag
+\verb+<<...>>+  and end symbols \verb+>>+  must be written starting in
+column one of the program file.
+
+    The special keyword \verb+hide+ (written in brackets) means that the
+contents of the block should {\sl not\/} be written to the \LaTeX{}
+output stream. For example:
+
+\begin{verbatim}
+    <<(hide)Tag>> =
+        ...
+        ...
+    >>
+\end{verbatim}
+
+Means write the given text to \verb+File+ but {\bf not} to the generated
+\LaTeX{} file. Note there are no spaces between the "(hide)" annotation
+and the start of the tag.
+
+Fragments can include other fragments, thus if we write:
+
+\begin{verbatim}
+ <<abc>> :=
+        line 1
+        <<more stuff here ...>>
+        line2
+ >>
+
+ <<more stuff here ...>> :=
+        hello
+ >>
+\end{verbatim}
+
+Then \verb+etangle+ will expand the fragment \verb+abc+ into:
+
+\begin{verbatim}
+        line 1
+        hello
+        line 2
+\end{verbatim}
+
+
+\subsection*{Running the program}
+
+  To run the program we evaluate the command \verb+eweb+ in the crrent
+directory.
+
+\subsection*{Bootstrapping the program}
+
+    This  system is written  in itself {\sl  How did I  do that?} The
+distribution contains two files -- \verb+eweb.lit+ and \verb+eweb.erl+
+(which is generated from \verb+eweb.lit+).
+
+    To  bootstrap  the  system  compile   the distributed version   of
+\verb+eweb.erl+ with your favorite  Erlang compiler. Then evaluate
+the expression:
+
+\begin{verbatim}
+        > eweb:file("eweb.lit").
+\end{verbatim}
+
+  If everything works (which it should) a new version of the file
+\verb+eweb.erl+ will have been created which is identical to the file in
+the distrbution, the file \verb+eweb.tex+ will also be created.
+\verb+eweb.tex+ can be run through \LaTeX{} (twice, to get the page
+numbers right) to get a pretty version of the documentation.
+
+    Note if you {\sl change\/} this program remember to keep a copy of
+the origonal which you can go back to if things go wrong!
+
+\section*{Etangle and Eweave}
+
+The overall structure of the program is as follows:
+
+\begin{flushleft}
+\label{eweb.erl_start}
+\noindent {\small {\sl $<<$eweb.erl (1/1)$>>$} := }\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{11:}}%
+\verb&-module(eweb).&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{12:}}%
+\verb&-export([file/1, dir/0]).&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{13:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{14:}}%
+\verb&&{\sl $<<$imports \pageref{imports_start} $>>$}\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{15:}}%
+\verb&&{\sl $<<$main \pageref{main_start} $>>$}\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{16:}}%
+\verb&&{\sl $<<$parsing \pageref{parsing_start} $>>$}\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{17:}}%
+\verb&&{\sl $<<$analysis \pageref{analysis_start} $>>$}\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{18:}}%
+\verb&&{\sl $<<$etangle \pageref{etangle_start} $>>$}\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{19:}}%
+\verb&&{\sl $<<$eweave \pageref{eweave_start} $>>$}\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{20:}}%
+\verb&&{\sl $<<$error handling \pageref{error handling_start} $>>$}\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{21:}}%
+\verb&&{\sl $<<$utilities \pageref{utilities_start} $>>$}\\
+\end{flushleft}
+
+{\sl 14} -- {\sl 21}: Include a number of fragments which make up the
+program. The fragment {\sl imports}, for example, starts on pag
+\pageref{imports_start}.
+
+    We start with \verb+file/1+ which  is the main  entry point of the
+module.  Most of file is enclosed in a big  \verb+catch begin ... end+
+construct:
+
+\begin{flushleft}
+\label{main_start}
+\noindent {\small {\sl $<<$main (1/1)$>>$} := }\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{22:}}%
+\verb&file(File) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{23:}}%
+\verb&    LitFile = File ++ ".lit",&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{24:}}%
+\verb&    io:fwrite("Processing:~p~n", [LitFile]),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{25:}}%
+\verb&    case (catch begin&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{26:}}%
+\verb&          clear_errors(),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{27:}}%
+\verb&          Strings = read_file(LitFile),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{28:}}%
+\verb&          throw_if_errors(),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{29:}}%
+\verb&          {OutDir, OutFiles, Copy, Blocks0} = &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{30:}}%
+\verb&              strings2blocks(Strings),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{31:}}%
+\verb&          throw_if_errors(),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{32:}}%
+\verb&          Blocks1 = number_blocks(Blocks0),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{33:}}%
+\verb&          throw_if_errors(),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{34:}}%
+\verb&          {Blocks, Dict} = number_lines(Blocks1),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{35:}}%
+\verb&          throw_if_errors(),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{36:}}%
+\verb&          eweave(OutDir, File, Blocks, Dict),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{37:}}%
+\verb&          etangle(File, OutDir, OutFiles, Copy, Blocks)&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{38:}}%
+\verb&          end) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{39:}}%
+\verb&        {errors, E} ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{40:}}%
+\verb&            report_errors(E),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{41:}}%
+\verb&            error;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{42:}}%
+\verb&        {'EXIT', Why} ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{43:}}%
+\verb&            io:fwrite("EXIT ~p~n", [Why]),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{44:}}%
+\verb&            error;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{45:}}%
+\verb&        Other ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{46:}}%
+\verb&            Other&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{47:}}%
+\verb&    end.&\\
+\end{flushleft}
+
+{\sl 37}: Note the {\sl return\/} value of \verb+file+ is whatever
+\verb+etangle+ returns and this is a list of files which were created,
+this can be useful for combining \verb+eweb+ with other programs.
+
+Error handling in this program is slightly complicated since
+we want to collect {\sl all\/} the errors in a given pass
+and not just abort on the first error.
+The error handling routines use the global variable \verb+error$list+.
+which is used to stored a list of all errors which have occured.
+This is at the start of the program by calling:
+
+\begin{flushleft}
+\label{error handling_start}
+\noindent {\small {\sl $<<$error handling (1/5)$>>$} := $\bigtriangledown$ \pageref{error handling_2_5}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{48:}}%
+\verb&clear_errors() -> put('error$list', []).&\\
+\end{flushleft}
+
+If an error occurs {\sl within} a pass we call \verb+error(X)+ 
+which adds the error to the error list.
+
+\begin{flushleft}
+\label{error handling_2_5}
+\noindent {\small {\sl $<<$error handling (2/5)$>>$} += $\bigtriangleup$ \pageref{error handling_start} \ $\bigtriangledown$ \pageref{error handling_3_5}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{49:}}%
+\verb&error(E) -> &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{50:}}%
+\verb&    put('error$list', [E|get('error$list')]), error.&\\
+\end{flushleft}
+
+  Between each pass  \verb+throw_if_errors+ is called.  This checks if
+any errors have been reported.   If any errors   have occured then  an
+exception is raised which will be caught in \verb+file/1+.
+
+\begin{flushleft}
+\label{error handling_3_5}
+\noindent {\small {\sl $<<$error handling (3/5)$>>$} += $\bigtriangleup$ \pageref{error handling_2_5} \ $\bigtriangledown$ \pageref{error handling_4_5}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{51:}}%
+\verb&throw_if_errors() ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{52:}}%
+\verb&    case get('error$list') of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{53:}}%
+\verb&        [] ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{54:}}%
+\verb&            true;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{55:}}%
+\verb&        Errors ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{56:}}%
+\verb&            throw({errors, reverse(Errors)})&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{57:}}%
+\verb&    end.&\\
+\end{flushleft}
+
+  Note  we call \verb+reverse(Errors)+  to reverse the order of errors
+in the error list.  This is because errors are reported by adding them
+to the head of the error list. When we report  errors we want to do so
+in the order in which they occured. Reporting errors is done with:
+
+\begin{flushleft}
+\label{error handling_4_5}
+\noindent {\small {\sl $<<$error handling (4/5)$>>$} += $\bigtriangleup$ \pageref{error handling_3_5} \ $\bigtriangledown$ \pageref{error handling_5_5}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{58:}}%
+\verb&report_errors(Errors) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{59:}}%
+\verb&    map(fun display_error/1, Errors).&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{60:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{61:}}%
+\verb&display_error(X) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{62:}}%
+\verb&    io:fwrite("Error:~p~n", [X]).&\\
+\end{flushleft}
+
+Finally, we may want to abort {\sl immediately} if a serious error occurs:
+
+\begin{flushleft}
+\label{error handling_5_5}
+\noindent {\small {\sl $<<$error handling (5/5)$>>$} += $\bigtriangleup$ \pageref{error handling_4_5}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{63:}}%
+\verb&fatal(Error) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{64:}}%
+\verb&    throw({errors, [Error]}).&\\
+\end{flushleft}
+
+  \verb+read_file(File)+  reads a file  by calling \verb+file2strings+
+which returns a list   of the form  \verb+[{LineNo, String}]+.   When
+processing text files we often need line numbers for reporting errors,
+it proves convenient to store the  lines number together with the data
+on the line in a single data structure for ease of future reference.
+
+\begin{flushleft}
+\label{parsing_start}
+\noindent {\small {\sl $<<$parsing (1/13)$>>$} := $\bigtriangledown$ \pageref{parsing_2_13}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{65:}}%
+\verb&read_file(File) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{66:}}%
+\verb&    case catch file2strings(File) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{67:}}%
+\verb&        {'EXIT', Why}->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{68:}}%
+\verb&            error({cannot_read,file,File,Why});&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{69:}}%
+\verb&        Strings ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{70:}}%
+\verb&            Strings&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{71:}}%
+\verb&    end.&\\
+\end{flushleft}
+
+  Having read the file, we parse it. \verb+strings2blocks+ checks that
+the file has a correct header. An incorrect header generates a fatal
+error.
+
+\begin{flushleft}
+\label{parsing_2_13}
+\noindent {\small {\sl $<<$parsing (2/13)$>>$} += $\bigtriangleup$ \pageref{parsing_start} \ $\bigtriangledown$ \pageref{parsing_3_13}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{72:}}%
+\verb&strings2blocks([{_, [$# | _]} | T]) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{73:}}%
+\verb&    strings2blocks(T);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{74:}}%
+\verb&strings2blocks([{L, [$e, $w, $e, $b | S]} | T]) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{75:}}%
+\verb&    parse_header([{L, [$e, $w, $e, $b | S]} | T]);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{76:}}%
+\verb&strings2blocks(_) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{77:}}%
+\verb&    fatal({file,has,incorrect,header}).&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{78:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{79:}}%
+\verb&parse_header([{_,[$e,$w,$e,$b,$1,$.,$0|_]} | T]) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{80:}}%
+\verb&    parse_header_1(T);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{81:}}%
+\verb&parse_header([{_,[$e,$w,$e,$b,$1,$.,$1|_]} | T]) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{82:}}%
+\verb&    parse_header_1(T);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{83:}}%
+\verb&parse_header(_) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{84:}}%
+\verb&    fatal({file,has,incorrect,header}).&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{85:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{86:}}%
+\verb&parse_header_1([{_,[$o,$u,$t,$d,$i,$r,$=|OutDir]},&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{87:}}%
+\verb&                {_,[$o,$u,$t,$f,$i,$l,$e,$s,$=|OutFiles]}&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{88:}}%
+\verb&                |T]) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{89:}}%
+\verb&    {Copyright, Blocks} = parse_options(T),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{90:}}%
+\verb&    {OutDir, OutFiles, Copyright, Blocks};&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{91:}}%
+\verb&parse_header_1(_) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{92:}}%
+\verb&    fatal({file,has,incorrect,header}).&\\
+\end{flushleft}
+
+This handles the optional header fields (these are still required to be
+specified in order).
+
+\begin{flushleft}
+\label{parsing_3_13}
+\noindent {\small {\sl $<<$parsing (3/13)$>>$} += $\bigtriangleup$ \pageref{parsing_2_13} \ $\bigtriangledown$ \pageref{parsing_4_13}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{93:}}%
+\verb&parse_options([{_,[$c,$o,$p,$y,$r,$i,$g,$h,$t,$=|C]}&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{94:}}%
+\verb&               | T]) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{95:}}%
+\verb&        {C, parse1(T)};&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{96:}}%
+\verb&parse_options(T) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{97:}}%
+\verb&        {"", parse1(T)}.&\\
+\end{flushleft}
+
+    \verb+parse1+ collects together \LaTeX{} blocks and the blocks which
+belong to a fragment.
+
+\begin{flushleft}
+\label{parsing_4_13}
+\noindent {\small {\sl $<<$parsing (4/13)$>>$} += $\bigtriangleup$ \pageref{parsing_3_13} \ $\bigtriangledown$ \pageref{parsing_5_13}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{98:}}%
+\verb&parse1(T) -> parse1(T, []).&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{99:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{100:}}%
+\verb&parse1([], Blocks) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{101:}}%
+\verb&    reverse(Blocks);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{102:}}%
+\verb&parse1(T, Blocks) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{103:}}%
+\verb&    case get_block(T) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{104:}}%
+\verb&        none ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{105:}}%
+\verb&            reverse(Blocks);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{106:}}%
+\verb&        {B, T1} ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{107:}}%
+\verb&            parse1(T1, [B|Blocks])&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{108:}}%
+\verb&    end.&\\
+\end{flushleft}
+
+  \verb+get_block+ returns \verb+none+ if there are no more blocks, or
+\verb+{Block, Rest}+ where \verb+Block+      is the next  block    and
+\verb+Rest+ are the  remaining lines {\sl  after\/} the current block.
+\verb+get_block+   calls  either   \verb+get_tagged_block_body+     or
+\verb+get_untagged+  block to do  the work of collecting the different
+block types.
+
+\begin{flushleft}
+\label{parsing_5_13}
+\noindent {\small {\sl $<<$parsing (5/13)$>>$} += $\bigtriangleup$ \pageref{parsing_4_13} \ $\bigtriangledown$ \pageref{parsing_6_13}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{109:}}%
+\verb&get_block([]) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{110:}}%
+\verb&    none;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{111:}}%
+\verb&get_block([{Line,[$<,$<|T1]}|T2]) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{112:}}%
+\verb&    Header = parse_block_header(Line, [$<,$<|T1]),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{113:}}%
+\verb&    {Lines, T3} = get_tagged_block_body(T2, []),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{114:}}%
+\verb&    {{block, Line, Header, Lines}, T3};&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{115:}}%
+\verb&get_block([H|T]) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{116:}}%
+\verb&    {Lines, T1} = get_untagged_block(T, [H]),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{117:}}%
+\verb&    {{tex, Lines}, T1}.&\\
+\end{flushleft}
+
+  \verb+get_tagged_block_body+ collects  lines until  a line  starting
+\verb+>>+ is encountered or until there are no more input lines.
+
+\begin{flushleft}
+\label{parsing_6_13}
+\noindent {\small {\sl $<<$parsing (6/13)$>>$} += $\bigtriangleup$ \pageref{parsing_5_13} \ $\bigtriangledown$ \pageref{parsing_7_13}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{118:}}%
+\verb&get_tagged_block_body([], Lines) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{119:}}%
+\verb&    {reverse(Lines), []};&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{120:}}%
+\verb&get_tagged_block_body([{_,[$>,$>|_]}|T], Lines) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{121:}}%
+\verb&    {reverse(Lines), T};&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{122:}}%
+\verb&get_tagged_block_body([H|T], Lines) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{123:}}%
+\verb&    get_tagged_block_body(T, [parse_data(H)|Lines]).&\\
+\end{flushleft}
+
+\verb+get_untagged_block+ collects lines until a line starting
+\verb+<<+ is seen:
+ 
+\begin{flushleft}
+\label{parsing_7_13}
+\noindent {\small {\sl $<<$parsing (7/13)$>>$} += $\bigtriangleup$ \pageref{parsing_6_13} \ $\bigtriangledown$ \pageref{parsing_8_13}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{124:}}%
+\verb&get_untagged_block([H|T], Lines) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{125:}}%
+\verb&    case H of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{126:}}%
+\verb&        {_Line,[$<,$<|_]} ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{127:}}%
+\verb&            {reverse(Lines), [H|T]};&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{128:}}%
+\verb&        _ ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{129:}}%
+\verb&            get_untagged_block(T, [H|Lines])&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{130:}}%
+\verb&    end;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{131:}}%
+\verb&get_untagged_block([], Lines) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{132:}}%
+\verb&    {reverse(Lines), []}.&\\
+\end{flushleft}
+
+Event time a block starting \verb+<<+ is seen \verb+parse_block_header+ is
+called to parse the contents of the header:
+
+\begin{flushleft}
+\label{parsing_8_13}
+\noindent {\small {\sl $<<$parsing (8/13)$>>$} += $\bigtriangleup$ \pageref{parsing_7_13} \ $\bigtriangledown$ \pageref{parsing_9_13}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{133:}}%
+\verb&parse_block_header(Line, Str) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{134:}}%
+\verb&    case parse_tag(Str) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{135:}}%
+\verb&        {ok, Hide, Tag, Str1} ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{136:}}%
+\verb&            case parse_after_tag(Str1) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{137:}}%
+\verb&                {ok, Type} ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{138:}}%
+\verb&                    {Hide, Tag, Type};&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{139:}}%
+\verb&                error ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{140:}}%
+\verb&                    error({badTagFollower,line,Line,&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{141:}}%
+\verb&                           must,be,'+=','or',':='})&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{142:}}%
+\verb&            end;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{143:}}%
+\verb&        error ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{144:}}%
+\verb&            error({badTag,line,Line,is,Str})&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{145:}}%
+\verb&    end.&\\
+\end{flushleft}
+
+Tags are assumed to look like \verb+<<(hide)Tag>>+
+
+    \verb+parse_tag(Str)+ is used for tag parsing.  It returns
+\verb+{ok,Hide,Tag,Rest}+ or \verb+error+.  \verb+Hide+ is \verb+hide+
+if the block should be hidden or \verb+show+ if the block should be
+shown.
+
+\begin{flushleft}
+\label{parsing_9_13}
+\noindent {\small {\sl $<<$parsing (9/13)$>>$} += $\bigtriangleup$ \pageref{parsing_8_13} \ $\bigtriangledown$ \pageref{parsing_10_13}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{146:}}%
+\verb&parse_tag(Str1) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{147:}}%
+\verb&    case skip_white_space(Str1) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{148:}}%
+\verb&        [$<,$<,$(,$h,$i,$d,$e,$)|Str2] ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{149:}}%
+\verb&                case collect_name(Str2) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{150:}}%
+\verb&                    {ok, Tag, Rest} ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{151:}}%
+\verb&                        {ok, hide, Tag, Rest};&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{152:}}%
+\verb&                    error ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{153:}}%
+\verb&                        error&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{154:}}%
+\verb&                end;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{155:}}%
+\verb&        [$<,$<|Str2] ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{156:}}%
+\verb&            case collect_name(Str2) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{157:}}%
+\verb&                {ok, Tag, Rest} ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{158:}}%
+\verb&                    {ok, show, Tag, Rest};&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{159:}}%
+\verb&                error ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{160:}}%
+\verb&                    error&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{161:}}%
+\verb&            end;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{162:}}%
+\verb&        _ ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{163:}}%
+\verb&            error&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{164:}}%
+\verb&    end.&\\
+\end{flushleft}
+
+Where:
+
+\begin{flushleft}
+\label{parsing_10_13}
+\noindent {\small {\sl $<<$parsing (10/13)$>>$} += $\bigtriangleup$ \pageref{parsing_9_13} \ $\bigtriangledown$ \pageref{parsing_11_13}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{165:}}%
+\verb&collect_name(Str) -> collect_name(Str, []).&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{166:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{167:}}%
+\verb&collect_name([$>,$>|T], L) -> {ok, reverse(L), T};&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{168:}}%
+\verb&collect_name([H|T], L)     -> collect_name(T, [H|L]);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{169:}}%
+\verb&collect_name([], _)        -> error.&\\
+\end{flushleft}
+
+    After  the tag    we   expect to   find    one  of \verb+:=+    or
+\verb|+=|. This is recognised with:
+
+\begin{flushleft}
+\label{parsing_11_13}
+\noindent {\small {\sl $<<$parsing (11/13)$>>$} += $\bigtriangleup$ \pageref{parsing_10_13} \ $\bigtriangledown$ \pageref{parsing_12_13}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{170:}}%
+\verb&parse_after_tag(Str) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{171:}}%
+\verb&    case skip_white_space(Str) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{172:}}%
+\verb&        [$+,$=|_] -> {ok, continue};&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{173:}}%
+\verb&        [$:,$=|_] -> {ok, define};&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{174:}}%
+\verb&        _         -> error&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{175:}}%
+\verb&    end.&\\
+\end{flushleft}
+
+
+\verb+parse_data+ is called once for each line in the block.
+\verb+parse_data+ assumes that any line beginning \verb+<<+ 
+signals a fragment inclusion.
+
+\begin{flushleft}
+\label{parsing_12_13}
+\noindent {\small {\sl $<<$parsing (12/13)$>>$} += $\bigtriangleup$ \pageref{parsing_11_13} \ $\bigtriangledown$ \pageref{parsing_13_13}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{176:}}%
+\verb&parse_data({Line, Str}) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{177:}}%
+\verb&    case (Str1 = skip_white_space(Str)) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{178:}}%
+\verb&        [$<,$<|T] ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{179:}}%
+\verb&            case parse_tag(Str1) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{180:}}%
+\verb&                {ok, show, Tag, _} ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{181:}}%
+\verb&                    {Line, {include,Tag,Str}};&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{182:}}%
+\verb&                _ ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{183:}}%
+\verb&                    error({badTagRef,line,Line,"=",Str})&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{184:}}%
+\verb&            end;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{185:}}%
+\verb&        _ ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{186:}}%
+\verb&            {Line,Str}&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{187:}}%
+\verb&    end.&\\
+\end{flushleft}
+
+Once the data has been parsed we number the blocks in the fragments.
+For example, if there were four blocks in a fragment we would number them
+1/4, 2/4, 3/4, and 4/4.  This requires two passes:
+
+\begin{flushleft}
+\label{parsing_13_13}
+\noindent {\small {\sl $<<$parsing (13/13)$>>$} += $\bigtriangleup$ \pageref{parsing_12_13}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{188:}}%
+\verb&number_blocks(Blocks) -> &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{189:}}%
+\verb&    Dict0 = dict:new(),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{190:}}%
+\verb&    {Blocks1,Dict} = n_pass1(Blocks, [], Dict0),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{191:}}%
+\verb&    reverse(map(fun(X) -> n_pass2(X,Dict) end, Blocks1)).&\\
+\end{flushleft}
+
+In pass one we use a dictionary to count how many times we have seen
+each block.
+
+%2345678901234567890123456789012345678901234567890123456789
+\begin{flushleft}
+\label{analysis_start}
+\noindent {\small {\sl $<<$analysis (1/6)$>>$} := $\bigtriangledown$ \pageref{analysis_2_6}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{192:}}%
+\verb&n_pass1([{block,Line,{Hide,Tag,define},Data}|T],L,Dict) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{193:}}%
+\verb&    case dict:find(Tag, Dict) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{194:}}%
+\verb&        error ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{195:}}%
+\verb&            n_pass1(T,[{block2,Line,{Hide,Tag,1},Data}|L],&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{196:}}%
+\verb&                           dict:store(Tag,1,Dict));&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{197:}}%
+\verb&        {ok, _} ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{198:}}%
+\verb&            error({multiple_def,line,Line,tag,Tag}),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{199:}}%
+\verb&            n_pass1(T, [error|L], Dict)&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{200:}}%
+\verb&    end;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{201:}}%
+\verb&n_pass1([{block,Line,{Hide,Tag,continue},Data}|T],L,Dict) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{202:}}%
+\verb&    case dict:find(Tag, Dict) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{203:}}%
+\verb&        {ok, N} ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{204:}}%
+\verb&            n_pass1(T,&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{205:}}%
+\verb&                    [{block2,Line,{Hide,Tag,N+1},Data}|L],&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{206:}}%
+\verb&                    dict:store(Tag, N+1, Dict));&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{207:}}%
+\verb&        error ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{208:}}%
+\verb&            error({continuation_but_no_start,&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{209:}}%
+\verb&                   line,Line,tag,Tag}),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{210:}}%
+\verb&            n_pass1(T, [error|L], Dict)&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{211:}}%
+\verb&    end;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{212:}}%
+\verb&n_pass1([H|T], Blocks, Dict) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{213:}}%
+\verb&    n_pass1(T, [H|Blocks], Dict);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{214:}}%
+\verb&n_pass1([], Blocks, Dict) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{215:}}%
+\verb&    {Blocks, Dict}.&\\
+\end{flushleft}
+
+    After pass one we know the maximum number of blocks in each fragment.
+In the second pass we can add this information to the block headers.
+
+\begin{flushleft}
+\label{analysis_2_6}
+\noindent {\small {\sl $<<$analysis (2/6)$>>$} += $\bigtriangleup$ \pageref{analysis_start} \ $\bigtriangledown$ \pageref{analysis_3_6}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{216:}}%
+\verb&n_pass2({block2, Line,{Hide,Tag,N}, Data}, Dict) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{217:}}%
+\verb&        Max = dict:fetch(Tag, Dict),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{218:}}%
+\verb&        {block3, Line,{Hide,Tag,{N,Max}},Data};&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{219:}}%
+\verb&n_pass2(X, _) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{220:}}%
+\verb&    X.&\\
+\end{flushleft}
+
+  Note how in each pass we changed the tags \verb+block1+ to
+\verb+block2+, then \verb+block3+ and finally \verb+block4+.  Use of
+distinct tags for different phases in the processing is good
+programming practise, it aids understanding of the program and in the
+event of an error makes debugging easier.
+
+    When we have numbered all the blocks we can go to the next phase
+of the program which numbers all the lines {\sl within\/} the code
+blocks.
+
+\begin{flushleft}
+\label{analysis_3_6}
+\noindent {\small {\sl $<<$analysis (3/6)$>>$} += $\bigtriangleup$ \pageref{analysis_2_6} \ $\bigtriangledown$ \pageref{analysis_4_6}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{221:}}%
+\verb&number_lines(Blocks) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{222:}}%
+\verb&    {Blocks1, {_Max, Dict}} = &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{223:}}%
+\verb&        mapfoldl(fun number_lines/2, {1, []}, Blocks),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{224:}}%
+\verb&    {Blocks1, Dict}.&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{225:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{226:}}%
+\verb&number_lines({block3, Line, {show,Tag,Indx}, Data}, A) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{227:}}%
+\verb&    {Data1, A1} = mapfoldl(fun number_code/2, A, Data),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{228:}}%
+\verb&    {{block4, Line, {show, Tag, Indx}, Data1}, A1};&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{229:}}%
+\verb&number_lines(Other, A) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{230:}}%
+\verb&    {Other, A}.&\\
+\end{flushleft}
+
+\verb+number_code+ numbers the individual lines of code and builds a
+dictionary of any line number references which are contained 
+{\sl within\/} the code blocks.
+
+\begin{flushleft}
+\label{analysis_4_6}
+\noindent {\small {\sl $<<$analysis (4/6)$>>$} += $\bigtriangleup$ \pageref{analysis_3_6} \ $\bigtriangledown$ \pageref{analysis_5_6}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{231:}}%
+\verb&number_code({_Line, {include,Tag,Str}},{N,Dict}) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{232:}}%
+\verb&    {{include1,N,Tag,Str},{N+1, Dict}};&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{233:}}%
+\verb&number_code({_Line, Str}, {N, Dict}) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{234:}}%
+\verb&    case Str of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{235:}}%
+\verb&        [$%,$#|T] ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{236:}}%
+\verb&            Label = extract_label(T),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{237:}}%
+\verb&            {label, {N, add_label(Label, N, Dict)}};&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{238:}}%
+\verb&        _ ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{239:}}%
+\verb&            {{line,N,Str}, {N+1,Dict}}&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{240:}}%
+\verb&    end.&\\
+\end{flushleft}
+
+{\sl 235} -- recognises a label.         \verb+extract_label+ 
+finds the value of the label.
+
+\begin{flushleft}
+\label{analysis_5_6}
+\noindent {\small {\sl $<<$analysis (5/6)$>>$} += $\bigtriangleup$ \pageref{analysis_4_6} \ $\bigtriangledown$ \pageref{analysis_6_6}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{241:}}%
+\verb&extract_label([$\n|_]) -> [];&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{242:}}%
+\verb&extract_label([$\t|_]) -> [];&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{243:}}%
+\verb&extract_label([$ |_])  -> [];&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{244:}}%
+\verb&extract_label([])      -> [];&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{245:}}%
+\verb&extract_label([H|T])   -> [H|extract_label(T)].&\\
+\end{flushleft}
+
+\verb+add_label+ adds a new label and line number pair to the
+dictionary. It also checks for multiple lables and generates an error
+if an attempt is made to define a multiple label.
+
+\begin{flushleft}
+\label{analysis_6_6}
+\noindent {\small {\sl $<<$analysis (6/6)$>>$} += $\bigtriangleup$ \pageref{analysis_5_6}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{246:}}%
+\verb&add_label(Label, N, Dict) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{247:}}%
+\verb&    case lists:keysearch(Label, 1, Dict) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{248:}}%
+\verb&        {value, _} ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{249:}}%
+\verb&            error({duplicate_label, Label}),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{250:}}%
+\verb&            Dict;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{251:}}%
+\verb&        _ ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{252:}}%
+\verb&            [{Label,N}|Dict]&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{253:}}%
+\verb&    end.&\\
+\end{flushleft}
+
+\section*{Eweave}
+
+Eweave creates the \LaTeX{} file. \verb+OutDir+ is the directory were
+the output is to go. \verb+File+ is the name of the current file.
+\verb+L+ is the parsed file:
+
+\begin{flushleft}
+\label{eweave_start}
+\noindent {\small {\sl $<<$eweave (1/14)$>>$} := $\bigtriangledown$ \pageref{eweave_2_14}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{254:}}%
+\verb&eweave(OutDir, File, L, Dict) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{255:}}%
+\verb&    FullName = OutDir ++ "/" ++ File ++ ".tex", &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{256:}}%
+\verb&    case file:open(FullName, write) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{257:}}%
+\verb&        {ok, S} ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{258:}}%
+\verb&            foreach(fun(B) -> &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{259:}}%
+\verb&                           weave_block(B, Dict, S) &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{260:}}%
+\verb&                   end, L),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{261:}}%
+\verb&            file:close(S);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{262:}}%
+\verb&         {error, Why } ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{263:}}%
+\verb&            exit({cannot,open, FullName})&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{264:}}%
+\verb&    end.&\\
+\end{flushleft}
+
+\verb+eweave+ calls \verb+weave_block+ for each block in the file:
+Note that hidden blocks are not output:
+
+\begin{flushleft}
+\label{eweave_2_14}
+\noindent {\small {\sl $<<$eweave (2/14)$>>$} += $\bigtriangleup$ \pageref{eweave_start} \ $\bigtriangledown$ \pageref{eweave_3_14}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{265:}}%
+\verb&weave_block({tex, Lines}, Dict, S) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{266:}}%
+\verb&    output_tex_block(S, Dict, Lines);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{267:}}%
+\verb&weave_block({block4,Line,{show,Tag,{N,M}},Data},_,S) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{268:}}%
+\verb&    output_code_block(S, Tag,{N,M}, Data);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{269:}}%
+\verb&weave_block(_, _, _) -> &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{270:}}%
+\verb&    true.&\\
+\end{flushleft}
+
+  \verb+weave_block+ calls \verb+output_tex_block+ or
+\verb+output_code_block+ depending upon the block type.
+
+\begin{flushleft}
+\label{eweave_3_14}
+\noindent {\small {\sl $<<$eweave (3/14)$>>$} += $\bigtriangleup$ \pageref{eweave_2_14} \ $\bigtriangledown$ \pageref{eweave_4_14}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{271:}}%
+\verb&output_tex_block(S, Dict, Lines) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{272:}}%
+\verb&    foreach(fun({_,Str}) -> &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{273:}}%
+\verb&                   put_tex_line(S, Dict, Str) &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{274:}}%
+\verb&            end, Lines).&\\
+\end{flushleft}
+
+    \verb+put_text_line+ just outputs the line  if it is {\sl not\/} a
+comment.
+
+\begin{flushleft}
+\label{eweave_4_14}
+\noindent {\small {\sl $<<$eweave (4/14)$>>$} += $\bigtriangleup$ \pageref{eweave_3_14} \ $\bigtriangledown$ \pageref{eweave_5_14}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{275:}}%
+\verb&put_tex_line(S, Dict, [$#|_]) -> true;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{276:}}%
+\verb&put_tex_line(S, Dict, Str)    -> &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{277:}}%
+\verb&    Str1 = expand_labels(Str, Dict),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{278:}}%
+\verb&    io:fwrite(S, "~s~n", [detab(Str1)]).&\\
+\end{flushleft}
+
+\verb+expand_labels+ has the jobs of expanding any lables in the
+line:
+
+\begin{flushleft}
+\label{eweave_5_14}
+\noindent {\small {\sl $<<$eweave (5/14)$>>$} += $\bigtriangleup$ \pageref{eweave_4_14} \ $\bigtriangledown$ \pageref{eweave_6_14}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{279:}}%
+\verb&expand_labels([$\\,$L,$N,${|T], Dict) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{280:}}%
+\verb&    {Label, T1} = get_label(T, []),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{281:}}%
+\verb&    Val = lookup(Label, Dict),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{282:}}%
+\verb&    integer_to_list(Val) ++ expand_labels(T1, Dict);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{283:}}%
+\verb&expand_labels([$\\,$S,$L,${|T], Dict) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{284:}}%
+\verb&    {Label, T1} = get_label(T, []),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{285:}}%
+\verb&    Val = lookup(Label, Dict),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{286:}}%
+\verb&    "{\\sl " ++ integer_to_list(Val) ++&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{287:}}%
+\verb&        [$} | expand_labels(T1, Dict)];&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{288:}}%
+\verb&expand_labels([H|T], Dict) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{289:}}%
+\verb&    [H|expand_labels(T, Dict)];&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{290:}}%
+\verb&expand_labels([], Dict) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{291:}}%
+\verb&    [].&\\
+\end{flushleft}
+
+{\sl 279} -- recognises a refernce to a label somewhere within a
+line of \LaTeX{} text. Label are written \verb+\L+\verb+N{XXX}+ and can
+be placed anywere in the text, but they cannot be split over a line
+break.
+
+{\sl 283} -- recognises a reference to a slanted label
+written \verb+\S+\verb+L{XXX}+.
+
+\verb+get_label+ gets the label:
+
+\begin{flushleft}
+\label{eweave_6_14}
+\noindent {\small {\sl $<<$eweave (6/14)$>>$} += $\bigtriangleup$ \pageref{eweave_5_14} \ $\bigtriangledown$ \pageref{eweave_7_14}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{292:}}%
+\verb&get_label([$}|T], L) -> {reverse(L), T};&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{293:}}%
+\verb&get_label([H|T],  L) -> get_label(T, [H|L]);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{294:}}%
+\verb&get_label([], L)     -> {reverse(L), []}.&\\
+\end{flushleft}
+
+and \verb+lookup+ finds the value of a label in the dictionary:
+
+\begin{flushleft}
+\label{eweave_7_14}
+\noindent {\small {\sl $<<$eweave (7/14)$>>$} += $\bigtriangleup$ \pageref{eweave_6_14} \ $\bigtriangledown$ \pageref{eweave_8_14}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{295:}}%
+\verb&lookup(Label, [{Label,Val}|_]) -> Val;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{296:}}%
+\verb&lookup(Label, [_|T]) -> lookup(Label, T);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{297:}}%
+\verb&lookup(Label, [])    -> fatal({cannot,find,label,Label}).&\\
+\end{flushleft}
+
+\verb+output_code_block+ has to generate \LaTeX{} code, similar to the
+following:
+\begin{verbatim}
+    \verb+123:    text of line 123 ...+\\
+    \verb+124:    text of line 124 ...+\\
+    ...
+\end{verbatim}
+
+This is done as follows:
+
+\begin{flushleft}
+\label{eweave_8_14}
+\noindent {\small {\sl $<<$eweave (8/14)$>>$} += $\bigtriangleup$ \pageref{eweave_7_14} \ $\bigtriangledown$ \pageref{eweave_9_14}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{298:}}%
+\verb&output_code_block(S, Tag,{N,M}, Data) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{299:}}%
+\verb&    Label = mk_label(Tag, N, M),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{300:}}%
+\verb&    Refs  = mk_refs(Tag, N, M),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{301:}}%
+\verb&    io:fwrite(S, "\\begin{flushleft}~n"&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{302:}}%
+\verb&                 "\\label{~s}~n", [Label]),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{303:}}%
+\verb&    io:fwrite(S, "\\noindent {\\small "&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{304:}}%
+\verb&                 "{\\sl $<<$~s (~w/~w)$>>$} ~s ~s}\\\\*~n"&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{305:}}%
+\verb&                 "\\tt~n",&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{306:}}%
+\verb&              [str2tex(Tag),N,M,symbol(N,M),Refs]),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{307:}}%
+\verb&    foreach(fun(X) -> put_code(S, X) end, Data),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{308:}}%
+\verb&    io:fwrite(S, "\\end{flushleft}~n", []).&\\
+\end{flushleft}
+
+{\sl 303} -- {\sl 306} \verb+\obeylines+ is needed here to stop \TeX{}
+complaining about "Underfull boxes". \verb+\noindent+ is to stop the
+paragraph indentation which would otherwise occur here. \verb+\\*+
+prevents the header from being separated from the first line of code.
+
+{\sl 308} -- adds a blank line after every block.
+
+\verb+put_code+ is called once for every line of code within a block.
+
+\begin{flushleft}
+\label{eweave_9_14}
+\noindent {\small {\sl $<<$eweave (9/14)$>>$} += $\bigtriangleup$ \pageref{eweave_8_14} \ $\bigtriangledown$ \pageref{eweave_10_14}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{309:}}%
+\verb&put_code(S, {line,N,Str}) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{310:}}%
+\verb&    Str1 = verb_prepare(Str),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{311:}}%
+\verb&    io:fwrite(S, "~s\\verb&\verb+&+\verb&~s&\verb+&+\verb&\\\\~n",&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{312:}}%
+\verb&              [make_linehdr(N), detab(Str1)]);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{313:}}%
+\verb&put_code(S, {include1,N,Tag,Str}) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{314:}}%
+\verb&    {Blanks, _} = isolate_blanks(detab(Str)),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{315:}}%
+\verb&    DefRef = label(Tag,1,999999),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{316:}}%
+\verb&    io:fwrite(S, "~s\\verb&\verb+&+\verb&~s&\verb+&+\verb&"&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{317:}}%
+\verb&                 "{\\sl $<<$~s \\pageref{~s} $>>$}\\\\~n",&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{318:}}%
+\verb&              [make_linehdr(N), Blanks,&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{319:}}%
+\verb&               detab(str2tex(Tag)), DefRef]);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{320:}}%
+\verb&put_code(S, label) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{321:}}%
+\verb&    void.&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{322:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{323:}}%
+\verb&make_linehdr(N) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{324:}}%
+\verb&    io_lib:fwrite("\\noindent\\makebox[0pt][r]"&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{325:}}%
+\verb&                  "{\\makebox[4.5em][l]{~w:}}%~n", [N]).&\\
+\end{flushleft}
+
+The indentation of each fragment inclusion point is preserved, but any
+text following it on the same line is lost.
+
+The problem with outputting lines of code verbatim is that of finding a
+proper delimiter. Using \verb+\begin{verbatim}+ \ldots{}
+\verb+\end{verbatim}+ would make it even more difficult to assure that
+the text ``\verb+\end{verbatim}+'' does not occur in the code (perhaps
+in a comment or a string), so to make it simple we use \verb+\verb+ on a
+line-by-line basis. We cannot guarantee that any fixed character does
+not occur in the code, so we are forced to scan each line that is to be
+output in order to avoid occurrences of the delimiter character. As
+delimiter in the output, we select the character ``\verb+&+''. (In
+particular, this is not popular for making ``bars'' like
+``\verb+%%%%%%%%+'' in comment text.) Occurrences of ``\verb+&+'' in a
+line are ``escaped'' by the \verb+verb_prepare+ function.
+
+\begin{flushleft}
+\label{eweave_10_14}
+\noindent {\small {\sl $<<$eweave (10/14)$>>$} += $\bigtriangleup$ \pageref{eweave_9_14} \ $\bigtriangledown$ \pageref{eweave_11_14}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{326:}}%
+\verb&verb_prepare([$&\verb+&+\verb& | Cs]) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{327:}}%
+\verb&    [$&\verb+&+\verb&, $\\, $v, $e, $r, $b, $+, $&\verb+&+\verb&, $+,&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{328:}}%
+\verb&     $\\, $v, $e, $r, $b, $&\verb+&+\verb& | verb_prepare(Cs)];&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{329:}}%
+\verb&verb_prepare([C | Cs]) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{330:}}%
+\verb&    [C | verb_prepare(Cs)];&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{331:}}%
+\verb&verb_prepare([]) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{332:}}%
+\verb&    [].&\\
+\end{flushleft}
+
+  \verb+mk_label+ and \verb+mk_refs+ create the labels and the forward
+and backward references which are used in the \LaTeX{} formatting of a
+fragment. Each block in a fragment contains a reference (written
+``$\bigtriangleup$ Page)'' to the previous block in the fragment and a
+reference (written ``$\bigtriangledown$ Page)'' to the next block in the
+current fragment. Note the special cases of the first block which has no
+predecessor and the last block which has no successor.
+
+Note also the double backslashes \verb+\\+ where a single backslash
+should occur in the \LaTeX{} text.
+
+\begin{flushleft}
+\label{eweave_11_14}
+\noindent {\small {\sl $<<$eweave (11/14)$>>$} += $\bigtriangleup$ \pageref{eweave_10_14} \ $\bigtriangledown$ \pageref{eweave_12_14}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{333:}}%
+\verb&mk_label(Tag, N, M) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{334:}}%
+\verb&    label(Tag,N,M).&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{335:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{336:}}%
+\verb&mk_refs(Tag, 1, 1) -> "";&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{337:}}%
+\verb&mk_refs(Tag, 1, N) when N > 1 ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{338:}}%
+\verb&    io_lib:fwrite("$\\bigtriangledown$ \\pageref{~s}", &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{339:}}%
+\verb&                  [label(Tag,2,N)]);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{340:}}%
+\verb&mk_refs(Tag, N, N) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{341:}}%
+\verb&    io_lib:fwrite("$\\bigtriangleup$ \\pageref{~s}", &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{342:}}%
+\verb&                  [label(Tag,N-1,N)]);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{343:}}%
+\verb&mk_refs(Tag, N, M) when N < M ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{344:}}%
+\verb&    io_lib:fwrite("$\\bigtriangleup$ \\pageref{~s} \\ "&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{345:}}%
+\verb&                  "$\\bigtriangledown$ \\pageref{~s}", &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{346:}}%
+\verb&                  [label(Tag,N-1,M),label(Tag,N+1,M)]);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{347:}}%
+\verb&mk_refs(_, _, _) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{348:}}%
+\verb&    "".&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{349:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{350:}}%
+\verb&label(Tag,1,_) -> Tag ++ "_start";&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{351:}}%
+\verb&label(Tag,N,M) -> io_lib:fwrite("~s_~w_~w", [Tag,N,M]).&\\
+\end{flushleft}
+
+  Perhaps we should say something about the handling of inclusions:
+these are contained in the middle of code blocks. We want to type set
+the include references in italics, and correctly indent it, keeping the
+indentation that was used in the source file.
+
+  The term \verb+{include,Tag,Str}+ is the parsed form of the original
+source code line; \verb+Str+ is the original line. We split off the
+blanks at the start of this line and typeset the blanks as verbatim.
+After this we type set the tag name in italics. This will ensure that
+the inclusion directive is correctly indented.
+
+\begin{flushleft}
+\label{eweave_12_14}
+\noindent {\small {\sl $<<$eweave (12/14)$>>$} += $\bigtriangleup$ \pageref{eweave_11_14} \ $\bigtriangledown$ \pageref{eweave_13_14}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{352:}}%
+\verb&isolate_blanks(L) -> splitwith(fun(X) -> X == 32 end, L).&\\
+\end{flushleft}
+
+And we need to format the "type" of the block in the fragment:
+
+\begin{flushleft}
+\label{eweave_13_14}
+\noindent {\small {\sl $<<$eweave (13/14)$>>$} += $\bigtriangleup$ \pageref{eweave_12_14} \ $\bigtriangledown$ \pageref{eweave_14_14}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{353:}}%
+\verb&symbol(1,N) -> ":=";&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{354:}}%
+\verb&symbol(N,M) -> "+=".&\\
+\end{flushleft}
+
+\section*{Etangle}
+
+Etangle untangles the input 
+file and creates files from all files mentioned in the
+\verb+outfiles+ declaration, it {\sl returns\/} a list of all files
+that it created.
+
+\begin{flushleft}
+\label{etangle_start}
+\noindent {\small {\sl $<<$etangle (1/4)$>>$} := $\bigtriangledown$ \pageref{etangle_2_4}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{355:}}%
+\verb&etangle(Src, OutDir, OutFiles, Copy, L) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{356:}}%
+\verb&    io:fwrite("Calling tangle~n", []),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{357:}}%
+\verb&    Files =  string:tokens(OutFiles, ","),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{358:}}%
+\verb&    AllBlocks = [{H,D} || {block4, _, H, D} <- L],&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{359:}}%
+\verb&    UsedBlocks = &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{360:}}%
+\verb&        case Files of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{361:}}%
+\verb&            [] ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{362:}}%
+\verb&                io:fwrite("** Nothing to tangle~n", []),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{363:}}%
+\verb&                [];&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{364:}}%
+\verb&            _ ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{365:}}%
+\verb&                foldl(fun(File, Used) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{366:}}%
+\verb&                          tangle_file(Src,OutDir,File,Copy, &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{367:}}%
+\verb&                                      AllBlocks, Used)&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{368:}}%
+\verb&                      end, [], Files)&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{369:}}%
+\verb&    end,&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{370:}}%
+\verb&    warn_unused(AllBlocks, UsedBlocks),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{371:}}%
+\verb&    Files.&\\
+\end{flushleft}
+
+\verb+warn_unused+ prints a warning if any blocks are not used.
+
+\begin{flushleft}
+\label{etangle_2_4}
+\noindent {\small {\sl $<<$etangle (2/4)$>>$} += $\bigtriangleup$ \pageref{etangle_start} \ $\bigtriangledown$ \pageref{etangle_3_4}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{372:}}%
+\verb&warn_unused(All, Used) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{373:}}%
+\verb&    Defined = [{Tag,N,M} || {{_,Tag,{N,M}},_} <- All],&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{374:}}%
+\verb&    NotUsed = filter(fun(X) -> &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{375:}}%
+\verb&                            not member(X, Used) &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{376:}}%
+\verb&                     end, Defined),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{377:}}%
+\verb&    case NotUsed of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{378:}}%
+\verb&        [] ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{379:}}%
+\verb&            true;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{380:}}%
+\verb&        _ ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{381:}}%
+\verb&            io:fwrite("*** warning some blocks unused..~n"&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{382:}}%
+\verb&                      "~p~n", [NotUsed])&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{383:}}%
+\verb&    end.&\\
+\end{flushleft}
+    \verb+tangle_file+ is   called   for each file  mentioned   in the
+\verb+outfiles+ declaration. The variable  \verb+Used+ is used to
+note all fragments which have been included from the original source file.
+    
+If the file name starts with a \verb|+| character the file
+mode is set to executable.
+
+\begin{flushleft}
+\label{etangle_3_4}
+\noindent {\small {\sl $<<$etangle (3/4)$>>$} += $\bigtriangleup$ \pageref{etangle_2_4} \ $\bigtriangledown$ \pageref{etangle_4_4}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{384:}}%
+\verb&tangle_file(Src, OutDir, File, Copy, Blocks, Used) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{385:}}%
+\verb&    BaseName = case File of &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{386:}}%
+\verb&                   [$+|T] -> T;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{387:}}%
+\verb&                   T      -> T&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{388:}}%
+\verb&               end,&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{389:}}%
+\verb&    FullName = OutDir ++ "/" ++ BaseName,&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{390:}}%
+\verb&    io:fwrite("Creating ~s~n", [FullName]),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{391:}}%
+\verb&    {ok, S} = file:open(FullName, write),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{392:}}%
+\verb&    case lists:suffix(".erl", File) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{393:}}%
+\verb&        true ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{394:}}%
+\verb&            Warn = "%% This file was created from ~s~n"&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{395:}}%
+\verb&                   "%% please do not edit ~n"&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{396:}}%
+\verb&                   "%% ~s~n",&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{397:}}%
+\verb&            io:fwrite(S, Warn, [Src,Copy]);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{398:}}%
+\verb&        false ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{399:}}%
+\verb&            true&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{400:}}%
+\verb&    end,&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{401:}}%
+\verb&    Used1 = include_file(S, {start, BaseName}, &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{402:}}%
+\verb&                         Blocks, [], Used),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{403:}}%
+\verb&    file:close(S),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{404:}}%
+\verb&    case File of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{405:}}%
+\verb&        [$+|_] ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{406:}}%
+\verb&            os:cmd("chmod u+x " ++ BaseName);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{407:}}%
+\verb&        _ ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{408:}}%
+\verb&            true&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{409:}}%
+\verb&    end,&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{410:}}%
+\verb&    Used1.&\\
+\end{flushleft}
+
+    Most  of    the   work  is    done    in  \verb+include_file+  and
+\verb+untangle+. The  only point to  note  is the  use of the variable
+\verb+Path+.  Path is a list  of all references  from  the top of  the
+inclusion  tree to the current node  in the tree.  We keep a record of
+how  we have got  to   the current node   in  order to  avoid  circular
+inclusions. A circular  inclusion  (i.e. one of  the form  A includes B
+includes C ... includes A) would put the system into an infinite loop.
+
+  A  fatal  error is  generated   if we attempt   to  make a  circular
+inclusion.  We also keep track (in  the variable \verb+Used+) of which
+blocks in  the fragment have been included.    This infomation will be
+used later so that we can we  can issue a  diagnostic if any fragments
+were missed.
+
+\begin{flushleft}
+\label{etangle_4_4}
+\noindent {\small {\sl $<<$etangle (4/4)$>>$} += $\bigtriangleup$ \pageref{etangle_3_4}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{411:}}%
+\verb&include_file(S, Tag, Blocks, Path, Used) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{412:}}%
+\verb&    {Tag1, Data}  = find_block(Tag, Blocks),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{413:}}%
+\verb&    case member(Tag1, Path) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{414:}}%
+\verb&        true ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{415:}}%
+\verb&            fatal({recursive_tangle, Tag, Path});&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{416:}}%
+\verb&        false ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{417:}}%
+\verb&            untangle(S, Data, Tag1, Blocks,&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{418:}}%
+\verb&                     [Tag1|Path], [Tag1|Used])&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{419:}}%
+\verb&    end.&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{420:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{421:}}%
+\verb&untangle(S,[{line,_,Str}|T], Tag,Blocks,Path,Used) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{422:}}%
+\verb&    io:fwrite(S, "~s~n", [Str]),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{423:}}%
+\verb&    untangle(S, T, Tag, Blocks, Path, Used);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{424:}}%
+\verb&untangle(S,[{include1,_,NextTag,_}|T],&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{425:}}%
+\verb&         Tag,Blocks,Path,Used) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{426:}}%
+\verb&    Used1 = include_file(S, {start, NextTag},&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{427:}}%
+\verb&                         Blocks,Path,Used),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{428:}}%
+\verb&    untangle(S, T, Tag, Blocks, Path, Used1);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{429:}}%
+\verb&untangle(S, [label|T], Tag,Blocks,Path,Used) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{430:}}%
+\verb&    untangle(S, T, Tag, Blocks, Path, Used);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{431:}}%
+\verb&untangle(S, [], {Tag, Max, Max}, Blocks, Path, Used) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{432:}}%
+\verb&    Used;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{433:}}%
+\verb&untangle(S, [], {Tag, N, Max},&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{434:}}%
+\verb&         Blocks, Path, Used) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{435:}}%
+\verb&    include_file(S, {Tag,N+1,Max}, Blocks, Path, Used).&\\
+\end{flushleft}
+
+\verb+find_block+ finds a given block in a fragment:
+
+\begin{flushleft}
+\label{eweave_14_14}
+\noindent {\small {\sl $<<$eweave (14/14)$>>$} += $\bigtriangleup$ \pageref{eweave_13_14}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{436:}}%
+\verb&find_block({start, Tag}, Blocks) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{437:}}%
+\verb&    find_block(Tag, 1, Blocks);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{438:}}%
+\verb&find_block({Tag,I,N}, Blocks) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{439:}}%
+\verb&    find_block(Tag, I, Blocks).&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{440:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{441:}}%
+\verb&find_block(Tag, I, [{{_Hide,Tag,{I,N}},Data}|_]) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{442:}}%
+\verb&    {{Tag, I, N}, Data};&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{443:}}%
+\verb&find_block(Tag, I, [H|Blocks]) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{444:}}%
+\verb&    find_block(Tag, I, Blocks);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{445:}}%
+\verb&find_block(Tag, I, []) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{446:}}%
+\verb&    fatal({cannot_find_block, I, Tag}).&\\
+\end{flushleft}
+
+\verb+file2strings+, which we mentioned earlier, is implemented using\\
+\verb+binary2strings+ (this method is, incidentally, some three times
+faster than a previous version which I had written using
+\verb+file:read+ and \verb+io:get_line+).
+
+\begin{flushleft}
+\label{utilities_3_8}
+\noindent {\small {\sl $<<$utilities (3/8)$>>$} += $\bigtriangleup$ \pageref{utilities_2_8} \ $\bigtriangledown$ \pageref{utilities_4_8}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{447:}}%
+\verb&binary2strings(Bin) when binary(Bin) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{448:}}%
+\verb&    binary2strings(binary_to_list(Bin), 1, [], []).&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{449:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{450:}}%
+\verb&binary2strings([H|T], N, C, L) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{451:}}%
+\verb&    case H of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{452:}}%
+\verb&        $\n -> &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{453:}}%
+\verb&            binary2strings(T,N+1,[],[{N,reverse(C)}|L]);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{454:}}%
+\verb&        _ -> &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{455:}}%
+\verb&            binary2strings(T,N,[H|C],L)&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{456:}}%
+\verb&    end;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{457:}}%
+\verb&binary2strings([], N, [], L) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{458:}}%
+\verb&    reverse(L);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{459:}}%
+\verb&binary2strings([], N, C, L) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{460:}}%
+\verb&    reverse([{N,reverse(C)}|L]).&\\
+\end{flushleft}
+
+  We also need an import declarations and a  few small test and
+utility routines.
+
+
+\begin{flushleft}
+\label{imports_start}
+\noindent {\small {\sl $<<$imports (1/1)$>>$} := }\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{461:}}%
+\verb&-import(lists, [dropwhile/2, filter/2, foldl/3, foreach/2, &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{462:}}%
+\verb&                map/2, mapfoldl/3, member/2, reverse/1, &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{463:}}%
+\verb&                splitwith/2, sublist/3, suffix/2]).&\\
+\end{flushleft}
+
+\begin{flushleft}
+\label{utilities_4_8}
+\noindent {\small {\sl $<<$utilities (4/8)$>>$} += $\bigtriangleup$ \pageref{utilities_3_8} \ $\bigtriangledown$ \pageref{utilities_5_8}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{464:}}%
+\verb&skip_white_space(Str) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{465:}}%
+\verb&    dropwhile(fun($ )  -> true;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{466:}}%
+\verb&                 ($\n) -> true;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{467:}}%
+\verb&                 ($\t) -> true;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{468:}}%
+\verb&                 (_)   -> false &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{469:}}%
+\verb&              end, Str).&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{470:}}%
+\verb&                  &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{471:}}%
+\verb&detab(L) -> detab(L, 1, []).&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{472:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{473:}}%
+\verb&detab([$\t|T], N, L) when N rem 8 == 0 -> &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{474:}}%
+\verb&    detab(T, N+1, [$ |L]);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{475:}}%
+\verb&detab([$\t|T], N, L) -> &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{476:}}%
+\verb&    detab([$\t|T], N+1, [$ |L]);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{477:}}%
+\verb&detab([H|T], N, L) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{478:}}%
+\verb&    detab(T, N+1, [H|L]);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{479:}}%
+\verb&detab([], _, L) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{480:}}%
+\verb&    reverse(L).&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{481:}}%
+\verb&&\\
+\end{flushleft}
+
+And a shell script to launch everything: 
+
+\begin{flushleft}
+\label{eweb_start}
+\noindent {\small {\sl $<<$eweb (1/1)$>>$} := }\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{482:}}%
+\verb&erl -noshell -pa "/home/joe/erl/eweb" \&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{483:}}%
+\verb&    -s eweb dir -s erlang halt&\\
+\end{flushleft}
+
+\noindent (Edit the resulting file to point to where you store your
+compiled version of the \verb+eweb.erl+ file.)
+
+The shell script calls \verb+eweb:dir+ which processes all out of date
+files:
+
+\begin{flushleft}
+\label{utilities_5_8}
+\noindent {\small {\sl $<<$utilities (5/8)$>>$} += $\bigtriangleup$ \pageref{utilities_4_8} \ $\bigtriangledown$ \pageref{utilities_6_8}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{484:}}%
+\verb&dir() -> &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{485:}}%
+\verb&    foreach(fun file/1, &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{486:}}%
+\verb&            find_out_of_date(".", ".lit", ".tex")).&\\
+\end{flushleft}
+
+    \verb+find_out_of_date(".", ".lit", ".tex")+ finds all \verb+.tex+
+files that are out of date with respect to the \verb+.lit+ files in the
+current directory:
+
+\begin{flushleft}
+\label{utilities_6_8}
+\noindent {\small {\sl $<<$utilities (6/8)$>>$} += $\bigtriangleup$ \pageref{utilities_5_8} \ $\bigtriangledown$ \pageref{utilities_7_8}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{487:}}%
+\verb&find_out_of_date(Dir, In, Out) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{488:}}%
+\verb&    case file:list_dir(Dir) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{489:}}%
+\verb&        {ok, Files0} ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{490:}}%
+\verb&            Files1 = filter(fun(F) -> &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{491:}}%
+\verb&                                   suffix(In, F) &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{492:}}%
+\verb&                            end, Files0),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{493:}}%
+\verb&            Files2 = map(fun(F) -> &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{494:}}%
+\verb&                           sublist(F,1,&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{495:}}%
+\verb&                                   length(F) - length(In)) &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{496:}}%
+\verb&                         end, Files1),&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{497:}}%
+\verb&            filter(fun(F) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{498:}}%
+\verb&                          update(F, In, Out) &\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{499:}}%
+\verb&                   end, Files2);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{500:}}%
+\verb&        _ ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{501:}}%
+\verb&            []&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{502:}}%
+\verb&    end.&\\
+\end{flushleft}
+
+This calls \verb+update(File, In, Out)+ which 
+returns \verb+true+ if \verb|File ++ In| 
+was modified after \verb|File ++ Out|.
+
+\begin{flushleft}
+\label{utilities_7_8}
+\noindent {\small {\sl $<<$utilities (7/8)$>>$} += $\bigtriangleup$ \pageref{utilities_6_8} \ $\bigtriangledown$ \pageref{utilities_8_8}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{503:}}%
+\verb&update(File, In, Out) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{504:}}%
+\verb&    InFile  = File ++ In,&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{505:}}%
+\verb&    OutFile = File ++ Out,&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{506:}}%
+\verb&    case is_file(OutFile) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{507:}}%
+\verb&        true ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{508:}}%
+\verb&            case writeable(OutFile) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{509:}}%
+\verb&                true ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{510:}}%
+\verb&                    outofdate(InFile, OutFile);&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{511:}}%
+\verb&                false ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{512:}}%
+\verb&                    %% can't write so we can't update&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{513:}}%
+\verb&                    false&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{514:}}%
+\verb&            end;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{515:}}%
+\verb&        false ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{516:}}%
+\verb&            %% doesn't exist&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{517:}}%
+\verb&            true&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{518:}}%
+\verb&    end.&\\
+\end{flushleft}
+
+  And finally, there are number of  small utilities which interface us
+to the file system:
+
+\begin{flushleft}
+\label{utilities_8_8}
+\noindent {\small {\sl $<<$utilities (8/8)$>>$} += $\bigtriangleup$ \pageref{utilities_7_8}}\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{519:}}%
+\verb&is_file(File) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{520:}}%
+\verb&    case file:file_info(File) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{521:}}%
+\verb&        {ok, _} ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{522:}}%
+\verb&            true;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{523:}}%
+\verb&        _ ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{524:}}%
+\verb&            false&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{525:}}%
+\verb&    end.&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{526:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{527:}}%
+\verb&writeable(F) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{528:}}%
+\verb&    case file:file_info(F) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{529:}}%
+\verb&        {ok, {_,_,read_write,_,_,_,_}} -> true;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{530:}}%
+\verb&        {ok, {_,_,write     ,_,_,_,_}} -> true;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{531:}}%
+\verb&        _ -> false&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{532:}}%
+\verb&    end.&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{533:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{534:}}%
+\verb&outofdate(In, Out) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{535:}}%
+\verb&    case {last_modified(In), last_modified(Out)} of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{536:}}%
+\verb&        {T1, T2} when T1 > T2 ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{537:}}%
+\verb&            true;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{538:}}%
+\verb&        _ ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{539:}}%
+\verb&            false&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{540:}}%
+\verb&    end.&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{541:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{542:}}%
+\verb&last_modified(F) ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{543:}}%
+\verb&    case file:file_info(F) of&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{544:}}%
+\verb&        {ok, {_, _, _, _, Time, _, _}} ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{545:}}%
+\verb&            Time;&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{546:}}%
+\verb&        _ ->&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{547:}}%
+\verb&            exit({last_modified, F})&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{548:}}%
+\verb&    end.&\\
+\end{flushleft}
+
+That's it!
+
+\section*{Utilities}
+
+Here are a few useful utilites
+
+\begin{flushleft}
+\label{Makefile_start}
+\noindent {\small {\sl $<<$Makefile (1/1)$>>$} := }\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{549:}}%
+\verb&# Unix-Makefile for `eweb.lit'&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{550:}}%
+\verb&#&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{551:}}%
+\verb&# Note that `eweb.beam' must already exist for the `eweb'&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{552:}}%
+\verb&# shell script to be able to execute EWEB in Erlang&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{553:}}%
+\verb&# (assuming we run under BEAM).&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{554:}}%
+\verb&#&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{555:}}%
+\verb&# Be sure to have a backup of the latest stable `eweb.erl'&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{556:}}%
+\verb&# (or `eweb.beam') file before running `make'!&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{557:}}%
+\verb&# If the backup of `eweb.erl' is named `eweb.erl.stable',&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{558:}}%
+\verb&# then just do `make restore' to get a working `eweb.beam'.&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{559:}}%
+\verb&#&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{560:}}%
+\verb&# The version of LaTeX used for typesetting `eweb.tex'&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{561:}}%
+\verb&# should preferably be 2.09, rather than LaTeX 2e; the&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{562:}}%
+\verb&# old version is generally named `latex209' if it has&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{563:}}%
+\verb&# been kept on your local system.&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{564:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{565:}}%
+\verb&#LATEX=latex209&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{566:}}%
+\verb&LATEX=latex&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{567:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{568:}}%
+\verb&STABLE=eweb.erl.stable&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{569:}}%
+\verb&MACHINE=beam&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{570:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{571:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{572:}}%
+\verb&all:    eweb.$(MACHINE) doc&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{573:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{574:}}%
+\verb&doc:    eweb.dvi&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{575:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{576:}}%
+\verb&ps:     eweb.ps&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{577:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{578:}}%
+\verb&restore:        clean&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{579:}}%
+\verb&        cp -pf $(STABLE) eweb.erl&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{580:}}%
+\verb&        erl -compile eweb&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{581:}}%
+\verb&        touch -r $(STABLE) eweb.$(MACHINE)&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{582:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{583:}}%
+\verb&eweb.$(MACHINE):        eweb.erl&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{584:}}%
+\verb&        erl -compile eweb&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{585:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{586:}}%
+\verb&eweb.erl eweb.tex:      eweb.lit&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{587:}}%
+\verb&        sh ./eweb&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{588:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{589:}}%
+\verb&eweb.dvi:       eweb.tex&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{590:}}%
+\verb&        $(LATEX) eweb.tex&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{591:}}%
+\verb&        $(LATEX) eweb.tex&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{592:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{593:}}%
+\verb&eweb.ps:        eweb.dvi&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{594:}}%
+\verb&        dvips eweb.dvi -o&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{595:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{596:}}%
+\verb&clean:&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{597:}}%
+\verb&        -rm eweb.tex eweb.log eweb.aux eweb.erl&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{598:}}%
+\verb&&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{599:}}%
+\verb&realclean:      clean&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{600:}}%
+\verb&        -rm eweb.dvi&\\
+\end{flushleft}
+
+The following script prints a dvi file on \verb+lwd+ (our double-sided
+laser printer):
+
+\begin{flushleft}
+\label{dviprint_double_sided_start}
+\noindent {\small {\sl $<<$dviprint\_double\_sided (1/1)$>>$} := }\\*
+\tt
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{601:}}%
+\verb&#! /bin/sh&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{602:}}%
+\verb&dvips -o tmp123.ps $1&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{603:}}%
+\verb&lpr -P lwd tmp123.ps&\\
+\noindent\makebox[0pt][r]{\makebox[4.5em][l]{604:}}%
+\verb&rm tmp123.ps&\\
+\end{flushleft}
+
+\section*{Not done}
+
+Line numbers from the original should be included in the generated
+files. This is however not trivial since it can only be done between
+function declarations, by adding \verb+-file(...)+ annotations to the
+Erlang code, so the compiler gets the line numbers correct.
+
+An emacs-mode should be written for editing Literate Erlang programs. As
+a fix, the leading comment lines of EWEB~1.1 files allow you to begin a
+file with something like:
+\begin{verbatim}
+ #    -*-latex-*-
+ eweb1.1
+ ...
+\end{verbatim}
+which would make Emacs go into \LaTeX{} mode.
+
+Setting the ``executable'' flag on files should be done in an
+OS-independent way, not by Unix \verb+chmod+.
+
+\begin{thebibliography}{99}
+
+    \bibitem{knuth}  Donald  E. Knuth and Silvio   Levy. {\sl The CWEB
+system of Structured Documentation}. {\bf publisher??}
+
+    \bibitem{noweb} Norman  Ramsey.  {\sl Literate-Programming   Tools
+Need  Not Be   Complex}.  Research   report  CS-TR-351-91.   Princeton
+University, 1992.
+
+\end{thebibliography}
+
+\end{document}

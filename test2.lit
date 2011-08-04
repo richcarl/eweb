@@ -1,0 +1,39 @@
+eweb1.0
+outdir=.
+outfiles=test2.out
+
+\documentstyle[]{article}
+\begin{document}
+
+\section{Section 1}
+Paragraph one sic laudum domun  graso bolo par  dento de onum zipo
+
+<<test2.out>> :=
+%#abc
+abc(C) ->
+    a,
+    a1,
+    case 
+	<<b>> 
+	spaces,
+    end.
+%#ddd
+	<<b>> tabbed
+>>
+
+{\sl \LN{abc} -- \LN{ddd}} Bla domo de line 
+sicko rasto collus om da plato dombo!
+
+<<test2.out>> +=
+a() -> 1;
+b() -> 2.
+>>
+
+<<b>> :=
+%#def
+	b, tabbed
+>>
+
+Nada de dolum \LN{def} bogo.
+
+\end{document}
